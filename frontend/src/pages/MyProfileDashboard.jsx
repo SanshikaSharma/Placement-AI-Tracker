@@ -6,6 +6,8 @@ function MyProfileDashboard() {
   const navigate = useNavigate();
 
   const [profiles, setProfiles] = useState([]);
+  const [search, setSearch] = useState("");
+
   const [loading, setLoading] = useState(true);
 
   const [showEdit, setShowEdit] = useState(false);
@@ -18,6 +20,12 @@ function MyProfileDashboard() {
 
   // Fetch Profiles
   useEffect(() => {
+    const token = localStorage.getItem("token");
+
+if (!token) {
+  navigate("/login");
+  return;
+}
     let mounted = true;
 
     const fetchProfiles = async () => {
@@ -47,7 +55,8 @@ function MyProfileDashboard() {
     return () => {
       mounted = false;
     };
-  }, []);
+
+ }, [navigate]);
 
   // Open Edit Popup
   const openEdit = (profile) => {
@@ -109,14 +118,42 @@ function MyProfileDashboard() {
       console.error("Delete Error:", err);
     }
   };
-
+const filteredProfiles = profiles.filter((profile) =>
+  profile.name
+    ?.toLowerCase()
+    .includes(search.toLowerCase())
+);
   if (loading) {
     return <h2>Loading...</h2>;
   }
 
   return (
     <div style={{ padding: "20px" }}>
+      <button
+  onClick={() => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  }}
+  style={{
+    float: "right",
+    padding: "10px",
+  }}
+>
+  Logout
+</button>
       <h1>My Profile Dashboard</h1>
+      <input
+  type="text"
+  placeholder="Search Profile..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  style={{
+    width: "300px",
+    padding: "10px",
+    marginBottom: "20px",
+    marginLeft: "10px",
+  }}
+/>
 
       <button
         onClick={() => navigate("/")}
@@ -128,10 +165,10 @@ function MyProfileDashboard() {
         Add New Profile
       </button>
 
-      {profiles.length === 0 ? (
+      {filteredProfiles.length === 0 ? (
         <h3>No Profiles Found</h3>
       ) : (
-        profiles.map((profile) => (
+     filteredProfiles.map((profile) => (
           <div
             key={profile._id}
             style={{
@@ -151,6 +188,16 @@ function MyProfileDashboard() {
                 marginRight: "10px",
               }}
             >
+              <button
+  onClick={() =>
+    navigate(`/profile/${profile._id}`)
+  }
+  style={{
+    marginRight: "10px",
+  }}
+>
+  View
+</button>
               Edit
             </button>
 

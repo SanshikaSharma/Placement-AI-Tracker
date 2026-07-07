@@ -11,7 +11,8 @@ const connectDB = require("./config/db");
 
 // Routes
 const profileRoutes = require("./routes/profileRoutes");
-
+const authRoutes = require("./routes/authRoutes");
+const placementRoutes = require("./routes/placementRoutes");
 connectDB();
 
 const app = express();
@@ -27,7 +28,8 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/profile", profileRoutes);
-
+app.use("/api/auth", authRoutes);
+app.use("/api/placement", placementRoutes);
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
