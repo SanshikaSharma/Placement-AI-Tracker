@@ -1,0 +1,70 @@
+.placement-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.placement-table th {
+  background: #2563eb;
+  color: white;
+  padding: 15px;
+  text-align: left;
+}
+
+.placement-table td {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.placement-table tr:hover {
+  background: #f8fafc;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.applied {
+  background: #f59e0b;
+}
+
+.oa {
+  background: #3b82f6;
+}
+
+.interview {
+  background: #8b5cf6;
+}
+
+.selected {
+  background: #10b981;
+}
+
+.rejected {
+  background: #ef4444;
+}
+
+.action-btn {
+  margin-right: 8px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background: #2563eb;
+  color: white;
+}
+
+.delete-btn {
+  background: #ef4444;
+  color: white;
+}

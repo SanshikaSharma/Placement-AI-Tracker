@@ -1,9 +1,47 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  password: String,
-});
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+    },
+
+    resume: {
+      fileName: {
+        type: String,
+        default: "",
+      },
+
+      originalName: {
+        type: String,
+        default: "",
+      },
+
+      filePath: {
+        type: String,
+        default: "",
+      },
+
+      uploadedAt: {
+        type: Date,
+      },
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 module.exports = mongoose.model("User", userSchema);

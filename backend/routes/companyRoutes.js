@@ -1,32 +1,17 @@
 const express = require("express");
-const Placement = require("../models/Placement");
+const Company = require("../models/Company");
 
 const router = express.Router();
 
-// Create Placement
-router.post("/create", async (req, res) => {
+// Add Company
+router.post("/add", async (req, res) => {
   try {
-const {
-  company,
-  role,
-  status,
-  interviewDate,
-  interviewRound,
-  notes,
-} = req.body;
-
-const placement = await Placement.create({
-  company,
-  role,
-  status,
-  interviewDate,
-  interviewRound,
-  notes,
-});
+    const company = await Company.create(req.body);
 
     res.status(201).json({
       success: true,
-      placement,
+      message: "Company added successfully",
+      company,
     });
   } catch (error) {
     res.status(500).json({
@@ -36,14 +21,16 @@ const placement = await Placement.create({
   }
 });
 
-// Get All Placements
+// Get All Companies
 router.get("/all", async (req, res) => {
   try {
-    const placements = await Placement.find();
+    const companies = await Company.find().sort({
+      createdAt: -1,
+    });
 
     res.json({
       success: true,
-      placements,
+      companies,
     });
   } catch (error) {
     res.status(500).json({
@@ -52,23 +39,21 @@ router.get("/all", async (req, res) => {
     });
   }
 });
-// Delete Placement
+// Delete Company
 router.delete("/delete/:id", async (req, res) => {
   try {
-    const placement = await Placement.findByIdAndDelete(
-      req.params.id
-    );
+    const company = await Company.findByIdAndDelete(req.params.id);
 
-    if (!placement) {
+    if (!company) {
       return res.status(404).json({
         success: false,
-        message: "Placement not found",
+        message: "Company not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Placement deleted successfully",
+      message: "Company deleted successfully",
     });
   } catch (error) {
     res.status(500).json({
@@ -77,44 +62,29 @@ router.delete("/delete/:id", async (req, res) => {
     });
   }
 });
-// Update Placement
+// Update Company
 router.put("/update/:id", async (req, res) => {
   try {
-    const {
-      company,
-      role,
-      status,
-      interviewDate,
-      interviewRound,
-      notes,
-    } = req.body;
-
-    const placement = await Placement.findByIdAndUpdate(
+    const updatedCompany = await Company.findByIdAndUpdate(
       req.params.id,
-      {
-        company,
-        role,
-        status,
-        interviewDate,
-        interviewRound,
-        notes,
-      },
+      req.body,
       {
         new: true,
         runValidators: true,
       }
     );
 
-    if (!placement) {
+    if (!updatedCompany) {
       return res.status(404).json({
         success: false,
-        message: "Placement not found",
+        message: "Company not found",
       });
     }
 
     res.json({
       success: true,
-      placement,
+      message: "Company updated successfully",
+      company: updatedCompany,
     });
   } catch (error) {
     res.status(500).json({
@@ -123,5 +93,4 @@ router.put("/update/:id", async (req, res) => {
     });
   }
 });
-
 module.exports = router;

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
+
 function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -17,20 +19,24 @@ function Login() {
         }
       );
 
-      alert(res.data.message);
+      toast.success(res.data.message);
 
       localStorage.setItem(
         "token",
         res.data.token
       );
-
-      navigate("/dashboard");
+      
+localStorage.setItem(
+  "user",
+  JSON.stringify(res.data.user)
+);
+    navigate("/placements");
       console.log(res.data.token);
     } catch (error) {
-      alert(
-        error.response?.data?.message ||
-          "Login failed"
-      );
+      toast.error(
+  error.response?.data?.message ||
+    "Login failed"
+);
     }
   };
 

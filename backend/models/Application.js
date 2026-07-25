@@ -1,14 +1,10 @@
 const mongoose = require("mongoose");
 
-const placementSchema = new mongoose.Schema(
+const applicationSchema = new mongoose.Schema(
   {
     company: {
-      type: String,
-      required: true,
-    },
-
-    role: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
       required: true,
     },
 
@@ -18,24 +14,15 @@ const placementSchema = new mongoose.Schema(
         "Applied",
         "OA",
         "Interview",
-        "Rejected",
         "Selected",
+        "Rejected",
       ],
       default: "Applied",
     },
 
-    dateApplied: {
+    appliedDate: {
       type: Date,
       default: Date.now,
-    },
-
-    interviewDate: {
-      type: Date,
-    },
-
-    interviewRound: {
-      type: String,
-      default: "",
     },
 
     notes: {
@@ -49,6 +36,6 @@ const placementSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model(
-  "Placement",
-  placementSchema
+  "Application",
+  applicationSchema
 );
