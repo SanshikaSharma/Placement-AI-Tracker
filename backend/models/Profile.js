@@ -12,6 +12,10 @@ const profileSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    resume: {
+  type: String,
+  default: "",
+},
   },
   { timestamps: true }
 );

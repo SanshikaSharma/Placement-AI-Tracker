@@ -12,15 +12,14 @@ import {
 function Sidebar() {
   const location = useLocation();
 
-  const menu = [
-    { name: "Dashboard", path: "/dashboard", icon: <FaHome /> },
-    { name: "Profile", path: "/", icon: <FaUser /> },
-    { name: "Companies", path: "/companies", icon: <FaBuilding /> },
-    { name: "Applications", path: "/applications", icon: <FaClipboardList /> },
-    { name: "Analytics", path: "/analytics", icon: <FaChartPie /> },
-    { name: "Resume Analyzer", path: "/placements", icon: <FaFileAlt /> },
-  ];
-
+const menu = [
+  { name: "Dashboard", path: "/dashboard", icon: <FaHome /> },
+  { name: "Profile", path: "/", icon: <FaUser /> },
+  { name: "Companies", path: "/companies", icon: <FaBuilding /> },
+  { name: "Applications", path: "/applications", icon: <FaClipboardList /> },
+  { name: "Analytics", path: "/analytics", icon: <FaChartPie /> },
+  { name: "Resume", path: "/resume", icon: <FaFileAlt /> },
+];
   const logout = () => {
     localStorage.removeItem("token");
     window.location.href = "/login";

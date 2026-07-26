@@ -9,6 +9,9 @@ import ApplicationTracker from "./pages/ApplicationTracker";
 import ApplicationAnalytics from "./pages/ApplicationAnalytics";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import Landing from "./pages/Landing/Landing";
+import DashboardHome from "./pages/Dashboard/DashboardHome";
+import ResumePage from "./pages/Resume/ResumePage";
 
 function App() {
   return (
@@ -80,6 +83,18 @@ function App() {
     <ProtectedRoute>
       <Layout>
         <ApplicationAnalytics />
+      </Layout>
+    </ProtectedRoute>
+  }
+/>
+<Route path="/landing" element={<Landing />} />
+<Route path="/dashboard-v2" element={<DashboardHome />} />
+<Route
+  path="/resume"
+  element={
+    <ProtectedRoute>
+      <Layout>
+        <ResumePage />
       </Layout>
     </ProtectedRoute>
   }

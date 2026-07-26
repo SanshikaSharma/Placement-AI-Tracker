@@ -18,6 +18,7 @@ const resumeRoutes = require("./routes/resumeRoutes");
 const companyRoutes = require("./routes/companyRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 
+
 connectDB();
 
 const app = express();
