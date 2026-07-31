@@ -1,12 +1,22 @@
-import Navbar from "./Navbar";
-import Hero from "./Hero";
+import Layout from "../../components/layout/Layout";
+
+import Hero from "../../components/landing/Hero";
+import Stats from "../../components/landing/Stats";
+import Features from "../../components/landing/Features";
+import Recruiters from "../../components/landing/Recruiters";
+import Testimonials from "../../components/landing/Testimonials";
+import CTA from "../../components/landing/CTA";
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
+    <Layout>
       <Hero />
-    </div>
+      <Stats />
+      <Features />
+      <Recruiters />
+      <Testimonials />
+      <CTA />
+    </Layout>
   );
 }
 

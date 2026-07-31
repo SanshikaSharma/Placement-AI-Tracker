@@ -1,55 +1,93 @@
-import {
-  FaHome,
-  FaBuilding,
-  FaBriefcase,
-  FaFileAlt,
-  FaChartBar,
-  FaCalendarAlt,
-  FaBell,
-  FaCog,
-} from "react-icons/fa";
-
-const menus = [
-  { name: "Dashboard", icon: <FaHome /> },
-  { name: "Companies", icon: <FaBuilding /> },
-  { name: "Applications", icon: <FaBriefcase /> },
-  { name: "Resume AI", icon: <FaFileAlt /> },
-  { name: "Analytics", icon: <FaChartBar /> },
-  { name: "Calendar", icon: <FaCalendarAlt /> },
-  { name: "Notifications", icon: <FaBell /> },
-  { name: "Settings", icon: <FaCog /> },
-];
+import { NavLink } from "react-router-dom";
 
 function Sidebar() {
+  const menuItems = [
+   {
+  name: "Dashboard",
+  path: "/dashboard",
+  icon: "🏠",
+},
+    {
+      name: "My Profile",
+      path: "/profile",
+      icon: "👤",
+    },
+    {
+      name: "Resume",
+      path: "/resume",
+      icon: "📄",
+    },
+    {
+      name: "AI Resume Analysis",
+      path: "/resume-analysis",
+      icon: "🤖",
+    },
+    {
+      name: "Companies",
+      path: "/companies",
+      icon: "🏢",
+    },
+    {
+      name: "Applications",
+      path: "/applications",
+      icon: "📄",
+    },
+    {
+      name: "My Applications",
+      path: "/my-applications",
+      icon: "📋",
+    },
+    {
+      name: "Placements",
+      path: "/placements",
+      icon: "💼",
+    },
+    {
+      name: "Analytics",
+      path: "/analytics",
+      icon: "📊",
+    },
+  
+  ];
+
   return (
-    <div className="w-72 h-screen bg-white shadow-lg border-r">
-      <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold text-blue-600">
+    <aside className="w-64 min-h-screen bg-blue-900 text-white shadow-lg">
+
+      <div className="p-6 border-b border-blue-700">
+        <h1 className="text-2xl font-bold">
           Placement AI
         </h1>
 
-        <p className="text-sm text-gray-500">
-          Career Platform
+        <p className="text-blue-200 text-sm">
+          Student Portal
         </p>
       </div>
 
-      <div className="mt-6">
-        {menus.map((menu) => (
-          <div
-            key={menu.name}
-            className="flex items-center gap-4 px-6 py-4 hover:bg-blue-50 cursor-pointer transition-all"
+      <nav className="mt-6 px-3">
+
+        {menuItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-xl mb-2 transition-all ${
+                isActive
+                  ? "bg-white text-blue-900 font-semibold"
+                  : "hover:bg-blue-800"
+              }`
+            }
           >
-            <span className="text-blue-600 text-lg">
-              {menu.icon}
+            <span className="text-xl">
+              {item.icon}
             </span>
 
-            <span className="font-medium">
-              {menu.name}
-            </span>
-          </div>
+            <span>{item.name}</span>
+          </NavLink>
         ))}
-      </div>
-    </div>
+
+      </nav>
+
+    </aside>
   );
 }
 

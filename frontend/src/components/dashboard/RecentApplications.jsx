@@ -1,50 +1,43 @@
-function RecentApplications({ applications }) {
+function RecentApplications() {
+  const applications = [
+    {
+      company: "Google",
+      status: "Applied",
+    },
+    {
+      company: "Amazon",
+      status: "Interview",
+    },
+    {
+      company: "Infosys",
+      status: "Selected",
+    },
+  ];
+
   return (
-    <div className="bg-white rounded-2xl shadow-md p-6">
-      <h2 className="text-xl font-bold mb-5">
+    <div className="bg-white rounded-2xl shadow-lg p-6">
+
+      <h2 className="text-2xl font-bold mb-5">
         Recent Applications
       </h2>
 
-      {applications.length === 0 ? (
-        <p className="text-gray-500">
-          No applications found.
-        </p>
-      ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="py-3">Company</th>
-              <th>Status</th>
-              <th>Date</th>
-            </tr>
-          </thead>
+      <div className="space-y-4">
 
-          <tbody>
-            {applications
-              .slice()
-              .reverse()
-              .slice(0, 5)
-              .map((app) => (
-                <tr
-                  key={app._id}
-                  className="border-b"
-                >
-                  <td className="py-3">
-                    {app.company?.companyName}
-                  </td>
+        {applications.map((item, index) => (
+          <div
+            key={index}
+            className="flex justify-between border-b pb-3"
+          >
+            <span>{item.company}</span>
 
-                  <td>{app.status}</td>
+            <span className="font-semibold text-blue-700">
+              {item.status}
+            </span>
+          </div>
+        ))}
 
-                  <td>
-                    {new Date(
-                      app.appliedDate
-                    ).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      )}
+      </div>
+
     </div>
   );
 }

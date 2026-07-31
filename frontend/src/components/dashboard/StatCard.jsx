@@ -1,17 +1,17 @@
-import { motion } from "framer-motion";
-
-function StatCard({ title, value, icon, color, change }) {
+function StatCard({
+  title,
+  value,
+  color = "bg-blue-600",
+  icon,
+}) {
   return (
-    <motion.div
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.25 }}
-      className="bg-white rounded-2xl shadow-md p-6 border border-gray-100"
-    >
+    <div className="bg-white rounded-2xl shadow-lg p-6">
+
       <div className="flex justify-between items-center">
 
         <div>
 
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500">
             {title}
           </p>
 
@@ -19,20 +19,17 @@ function StatCard({ title, value, icon, color, change }) {
             {value}
           </h2>
 
-          <p className="text-green-600 text-sm mt-2">
-            {change}
-          </p>
-
         </div>
 
         <div
-          className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white text-3xl ${color}`}
+          className={`${color} w-14 h-14 rounded-xl flex items-center justify-center text-3xl text-white`}
         >
           {icon}
         </div>
 
       </div>
-    </motion.div>
+
+    </div>
   );
 }
 

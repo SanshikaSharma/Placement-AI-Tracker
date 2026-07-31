@@ -17,7 +17,10 @@ const placementRoutes = require("./routes/placementRoutes");
 const resumeRoutes = require("./routes/resumeRoutes");
 const companyRoutes = require("./routes/companyRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
-
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const aiResumeRoutes = require("./routes/aiResumeRoutes");
+const eligibilityRoutes = require("./routes/eligibilityRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 connectDB();
 
@@ -33,6 +36,10 @@ app.get("/", (req, res) => {
   res.send("API Running successfully");
 });
 
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
 // Routes
 app.use("/api/profile", profileRoutes);
 app.use("/api/auth", authRoutes);
@@ -42,6 +49,11 @@ console.log("Company Routes Loaded");
 console.log(companyRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/application", applicationRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/ai", aiResumeRoutes);
+app.use("/api/eligibility", eligibilityRoutes);
+app.use("/api/admin", adminRoutes);
+console.log("Admin Route Loaded");
 
 const PORT = process.env.PORT || 5001;
 

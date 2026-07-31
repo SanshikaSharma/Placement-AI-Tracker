@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const applicationSchema = new mongoose.Schema(
   {
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
@@ -12,22 +18,18 @@ const applicationSchema = new mongoose.Schema(
       type: String,
       enum: [
         "Applied",
-        "OA",
+        "Shortlisted",
         "Interview",
         "Selected",
         "Rejected",
+        "Withdrawn",
       ],
       default: "Applied",
     },
 
-    appliedDate: {
+    appliedAt: {
       type: Date,
       default: Date.now,
-    },
-
-    notes: {
-      type: String,
-      default: "",
     },
   },
   {
@@ -35,7 +37,4 @@ const applicationSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model(
-  "Application",
-  applicationSchema
-);
+module.exports = mongoose.model("Application", applicationSchema);

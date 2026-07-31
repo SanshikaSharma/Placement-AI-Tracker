@@ -1,96 +1,32 @@
 const express = require("express");
-const Company = require("../models/Company");
 
 const router = express.Router();
 
-// Add Company
-router.post("/add", async (req, res) => {
-  try {
-    const company = await Company.create(req.body);
+const {
+  addCompany,
+  getCompanies,
+  getCompanyById,
+  updateCompany,
+  deleteCompany,
+} = require("../controllers/companyController");
 
-    res.status(201).json({
-      success: true,
-      message: "Company added successfully",
-      company,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
+// ==========================
+// Company CRUD Routes
+// ==========================
+
+// Add Company
+router.post("/", addCompany);
 
 // Get All Companies
-router.get("/all", async (req, res) => {
-  try {
-    const companies = await Company.find().sort({
-      createdAt: -1,
-    });
+router.get("/", getCompanies);
 
-    res.json({
-      success: true,
-      companies,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
-// Delete Company
-router.delete("/delete/:id", async (req, res) => {
-  try {
-    const company = await Company.findByIdAndDelete(req.params.id);
+// Get Company By ID
+router.get("/:id", getCompanyById);
 
-    if (!company) {
-      return res.status(404).json({
-        success: false,
-        message: "Company not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Company deleted successfully",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
 // Update Company
-router.put("/update/:id", async (req, res) => {
-  try {
-    const updatedCompany = await Company.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+router.put("/:id", updateCompany);
 
-    if (!updatedCompany) {
-      return res.status(404).json({
-        success: false,
-        message: "Company not found",
-      });
-    }
+// Delete Company
+router.delete("/:id", deleteCompany);
 
-    res.json({
-      success: true,
-      message: "Company updated successfully",
-      company: updatedCompany,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-});
 module.exports = router;

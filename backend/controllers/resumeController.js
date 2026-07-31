@@ -1,44 +1,162 @@
-const Profile = require("../models/Profile");
+const User = require("../models/User");
+const fs = require("fs");
+const path = require("path");
 
+// Upload Resume
 const uploadResume = async (req, res) => {
   try {
-    const { profileId } = req.body;
+    const { userId } = req.body;
 
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No resume uploaded.",
+        message: "Please upload a PDF",
       });
     }
 
-    const profile = await Profile.findById(profileId);
+    const user = await User.findById(userId);
 
-    if (!profile) {
+    if (!user) {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
       return res.status(404).json({
         success: false,
-        message: "Profile not found.",
+        message: "User not found",
       });
     }
 
-    profile.resume = req.file.path;
+    // Delete previous resume
+    if (
+      user.resume?.filePath &&
+      fs.existsSync(user.resume.filePath)
+    ) {
+      fs.unlinkSync(user.resume.filePath);
+    }
 
-    await profile.save();
+    user.resume = {
+      fileName: req.file.filename,
+      originalName: req.file.originalname,
+      filePath: req.file.path,
+      uploadedAt: new Date(),
+    };
 
-    res.status(200).json({
+    await user.save();
+
+    res.json({
       success: true,
-      message: "Resume uploaded successfully.",
-      resumeUrl: req.file.path,
+      message: "Resume uploaded successfully",
+      resume: user.resume,
     });
+
   } catch (error) {
-    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get Resume Details
+const getResume = async (req, res) => {
+  try {
+
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      resume: user.resume,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Download Resume
+const downloadResume = async (req, res) => {
+  try {
+
+    const user = await User.findById(req.params.userId);
+
+    if (!user || !user.resume.filePath) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not found",
+      });
+    }
+
+    res.download(
+      path.resolve(user.resume.filePath),
+      user.resume.originalName
+    );
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Delete Resume
+const deleteResume = async (req, res) => {
+  try {
+
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (
+      user.resume.filePath &&
+      fs.existsSync(user.resume.filePath)
+    ) {
+      fs.unlinkSync(user.resume.filePath);
+    }
+
+    user.resume = {
+      fileName: "",
+      originalName: "",
+      filePath: "",
+      uploadedAt: null,
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Resume deleted successfully",
+    });
+
+  } catch (error) {
 
     res.status(500).json({
       success: false,
-      message: "Resume upload failed.",
+      message: error.message,
     });
+
   }
 };
 
 module.exports = {
   uploadResume,
+  getResume,
+  downloadResume,
+  deleteResume,
 };
