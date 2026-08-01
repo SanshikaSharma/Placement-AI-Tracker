@@ -43,13 +43,16 @@ export const deleteCompany = async (id) => {
 // ===========================
 // Apply Company
 // ===========================
-export const applyToCompany = async (
-  studentId,
-  companyId
-) => {
+export const applyToCompany = async (companyId) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user || !user._id) {
+    throw new Error("User not logged in.");
+  }
+
   const res = await api.post("/application/apply", {
-    studentId,
     companyId,
+    studentId: user._id,
   });
 
   return res.data;

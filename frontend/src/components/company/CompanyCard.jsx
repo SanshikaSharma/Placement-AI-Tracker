@@ -23,14 +23,7 @@ function CompanyCard({ company }) {
   };
   const handleApply = async () => {
   try {
-    const user = JSON.parse(localStorage.getItem("user"));
-
-    if (!user) {
-      alert("Please login first");
-      return;
-    }
-
-    const res = await applyToCompany(user._id, company._id);
+    const res = await applyToCompany(company._id);
 
     alert(res.message);
 
@@ -39,11 +32,11 @@ function CompanyCard({ company }) {
 
     alert(
       err.response?.data?.message ||
-      "Unable to Apply"
+      err.message ||
+      "Application Failed"
     );
   }
 };
-
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
 
@@ -75,29 +68,30 @@ function CompanyCard({ company }) {
 
       </div>
 
-      <div className="flex gap-3 mt-6">
+     <div className="flex gap-3 mt-6">
 
-        <Link
-          to={`/companies/edit/${company._id}`}
-          className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white text-center py-2 rounded-lg"
-        >
-          <button
-  onClick={handleApply}
-  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg mb-3"
->
-  Apply Now
-</button>
-          Edit
-        </Link>
+  <button
+    onClick={handleApply}
+    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
+  >
+    Apply Now
+  </button>
 
-        <button
-          onClick={handleDelete}
-          className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
-        >
-          Delete
-        </button>
+  <Link
+    to={`/companies/edit/${company._id}`}
+    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white text-center py-2 rounded-lg"
+  >
+    Edit
+  </Link>
 
-      </div>
+  <button
+    onClick={handleDelete}
+    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
+  >
+    Delete
+  </button>
+
+</div>
 
     </div>
   );

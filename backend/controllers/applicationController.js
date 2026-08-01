@@ -4,52 +4,53 @@ const Company = require("../models/Company");
 // =============================
 // APPLY TO COMPANY
 // =============================
+const Application = require("../models/Application");
+
 const applyToCompany = async (req, res) => {
   try {
-    const { studentId, companyId } = req.body;
+    const { companyId, studentId } = req.body;
 
-    const company = await Company.findById(companyId);
-
-    if (!company) {
-      return res.status(404).json({
+    if (!companyId || !studentId) {
+      return res.status(400).json({
         success: false,
-        message: "Company not found",
+        message: "Company ID and Student ID are required.",
       });
     }
 
     const alreadyApplied = await Application.findOne({
-      student: studentId,
       company: companyId,
+      student: studentId,
     });
 
     if (alreadyApplied) {
       return res.status(400).json({
         success: false,
-        message: "You have already applied to this company",
+        message: "Already Applied.",
       });
     }
 
     const application = await Application.create({
-      student: studentId,
       company: companyId,
+      student: studentId,
+      status: "Applied",
+      appliedDate: new Date(),
     });
 
     res.status(201).json({
       success: true,
-      message: "Application submitted successfully",
+      message: "Application Submitted Successfully",
       application,
     });
 
   } catch (error) {
-   console.error("Application Error:", error);
+    console.error(error);
 
-res.status(500).json({
-  success: false,
-  message: error.message,
-});
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
-
 // =============================
 // GET MY APPLICATIONS
 // =============================

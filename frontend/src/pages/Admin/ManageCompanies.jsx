@@ -26,7 +26,7 @@ function ManageCompanies() {
     }
   };
 
- useEffect(() => {
+  useEffect(() => {
   const loadCompanies = async () => {
     await fetchCompanies();
   };
@@ -36,7 +36,6 @@ function ManageCompanies() {
   const refreshCompanies = async () => {
   await fetchCompanies();
 };
-
   const handleDelete = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this company?"

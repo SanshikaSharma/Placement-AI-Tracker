@@ -16,7 +16,7 @@ function EditCompany() {
     role: "",
     package: "",
     location: "",
-    jobType: "",
+    jobType: "Full Time",
     minimumCGPA: "",
     eligibleBranches: "",
     skillsRequired: "",
@@ -34,9 +34,9 @@ function EditCompany() {
       try {
         const res = await getCompanyById(id);
 
-        const company = res.company;
-
         if (!mounted) return;
+
+        const company = res.company;
 
         setFormData({
           companyName: company.companyName || "",
@@ -55,9 +55,9 @@ function EditCompany() {
             : "",
           status: company.status || "Open",
         });
-
       } catch (err) {
         console.error(err);
+        alert("Unable to Load Company");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -88,6 +88,7 @@ function EditCompany() {
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+
         skillsRequired: formData.skillsRequired
           .split(",")
           .map((item) => item.trim())
@@ -97,7 +98,6 @@ function EditCompany() {
       alert("Company Updated Successfully");
 
       navigate("/companies");
-
     } catch (err) {
       console.error(err);
       alert("Update Failed");
@@ -105,12 +105,17 @@ function EditCompany() {
   };
 
   if (loading) {
-    return <h2 className="text-2xl p-8">Loading...</h2>;
+    return (
+      <div className="text-center text-2xl font-bold p-10">
+        Loading Company...
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-lg p-8">
-      <h1 className="text-3xl font-bold mb-8">
+    <div className="max-w-6xl mx-auto bg-white shadow-xl rounded-3xl p-10">
+
+      <h1 className="text-4xl font-bold mb-10">
         Edit Company
       </h1>
 
@@ -118,22 +123,229 @@ function EditCompany() {
         onSubmit={handleSubmit}
         className="grid md:grid-cols-2 gap-6"
       >
-        <input name="companyName" value={formData.companyName} onChange={handleChange} className="border rounded-xl p-3" required />
-        <input name="role" value={formData.role} onChange={handleChange} className="border rounded-xl p-3" required />
-        <input name="package" value={formData.package} onChange={handleChange} className="border rounded-xl p-3" required />
-        <input name="location" value={formData.location} onChange={handleChange} className="border rounded-xl p-3" required />
-        <input name="minimumCGPA" value={formData.minimumCGPA} onChange={handleChange} className="border rounded-xl p-3" />
-        <input name="eligibleBranches" value={formData.eligibleBranches} onChange={handleChange} className="border rounded-xl p-3" />
-        <input name="skillsRequired" value={formData.skillsRequired} onChange={handleChange} className="border rounded-xl p-3" />
-        <input name="deadline" type="date" value={formData.deadline} onChange={handleChange} className="border rounded-xl p-3" />
-        <input name="applyLink" value={formData.applyLink} onChange={handleChange} className="border rounded-xl p-3 md:col-span-2" />
-        <input name="eligibility" value={formData.eligibility} onChange={handleChange} className="border rounded-xl p-3 md:col-span-2" />
-        <textarea name="description" value={formData.description} onChange={handleChange} rows="5" className="border rounded-xl p-3 md:col-span-2" />
 
-        <button className="bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl md:col-span-2">
+        {/* Company Name */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Company Name
+          </label>
+
+          <input
+            type="text"
+            name="companyName"
+            placeholder="Enter Company Name"
+            value={formData.companyName}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+            required
+          />
+        </div>
+
+        {/* Role */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Job Role
+          </label>
+
+          <input
+            type="text"
+            name="role"
+            placeholder="Software Engineer"
+            value={formData.role}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+            required
+          />
+        </div>
+
+        {/* Package */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Package
+          </label>
+
+          <input
+            type="text"
+            name="package"
+            placeholder="12 LPA"
+            value={formData.package}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+            required
+          />
+        </div>
+
+        {/* Location */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Location
+          </label>
+
+          <input
+            type="text"
+            name="location"
+            placeholder="Bangalore"
+            value={formData.location}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+            required
+          />
+        </div>
+
+        {/* Job Type */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Job Type
+          </label>
+
+          <select
+            name="jobType"
+            value={formData.jobType}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          >
+            <option>Full Time</option>
+            <option>Internship</option>
+            <option>Internship + PPO</option>
+            <option>Part Time</option>
+          </select>
+        </div>
+
+        {/* Deadline */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Application Deadline
+          </label>
+
+          <input
+            type="date"
+            name="deadline"
+            value={formData.deadline}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Eligible Branches */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Eligible Branches
+          </label>
+
+          <input
+            type="text"
+            name="eligibleBranches"
+            placeholder="CSE, IT, AI"
+            value={formData.eligibleBranches}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Minimum CGPA */}
+
+        <div>
+          <label className="block mb-2 font-semibold">
+            Minimum CGPA
+          </label>
+
+          <input
+            type="number"
+            step="0.1"
+            name="minimumCGPA"
+            placeholder="7.5"
+            value={formData.minimumCGPA}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Skills */}
+
+        <div className="md:col-span-2">
+          <label className="block mb-2 font-semibold">
+            Skills Required
+          </label>
+
+          <input
+            type="text"
+            name="skillsRequired"
+            placeholder="React, Node.js, MongoDB"
+            value={formData.skillsRequired}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Apply Link */}
+
+        <div className="md:col-span-2">
+          <label className="block mb-2 font-semibold">
+            Apply Link
+          </label>
+
+          <input
+            type="text"
+            name="applyLink"
+            placeholder="https://careers.company.com"
+            value={formData.applyLink}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Eligibility */}
+
+        <div className="md:col-span-2">
+          <label className="block mb-2 font-semibold">
+            Eligibility
+          </label>
+
+          <input
+            type="text"
+            name="eligibility"
+            placeholder="Only 2027 Batch"
+            value={formData.eligibility}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Description */}
+
+        <div className="md:col-span-2">
+          <label className="block mb-2 font-semibold">
+            Job Description
+          </label>
+
+          <textarea
+            rows="6"
+            name="description"
+            placeholder="Enter Job Description"
+            value={formData.description}
+            onChange={handleChange}
+            className="w-full border rounded-xl p-4"
+          />
+        </div>
+
+        {/* Button */}
+
+        <button
+          type="submit"
+          className="md:col-span-2 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl text-lg font-semibold"
+        >
           Update Company
         </button>
+
       </form>
+
     </div>
   );
 }
