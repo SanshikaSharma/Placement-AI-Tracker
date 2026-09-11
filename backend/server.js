@@ -21,6 +21,9 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const aiResumeRoutes = require("./routes/aiResumeRoutes");
 const eligibilityRoutes = require("./routes/eligibilityRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const recommendationRoutes = require("./routes/recommendationRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const interviewRoutes = require("./routes/interviewRoutes");
 
 connectDB();
 
@@ -54,6 +57,12 @@ app.use("/api/ai", aiResumeRoutes);
 app.use("/api/eligibility", eligibilityRoutes);
 app.use("/api/admin", adminRoutes);
 console.log("Admin Route Loaded");
+app.use(
+  "/api/recommendations",
+  recommendationRoutes
+);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/interview", interviewRoutes);
 
 const PORT = process.env.PORT || 5001;
 

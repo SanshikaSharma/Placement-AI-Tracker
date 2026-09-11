@@ -3,14 +3,24 @@ const express = require("express");
 const router = express.Router();
 
 const {
+  getAllProfiles,
   getProfile,
   updateProfile,
 } = require("../controllers/profileController");
 
-// Get Profile
+// ==========================
+// IMPORTANT: STATIC ROUTES FIRST
+// ==========================
+router.get("/all", getAllProfiles);
+
+// ==========================
+// SINGLE PROFILE
+// ==========================
 router.get("/:id", getProfile);
 
-// Update Profile
+// ==========================
+// UPDATE PROFILE
+// ==========================
 router.put("/:id", updateProfile);
 
 module.exports = router;

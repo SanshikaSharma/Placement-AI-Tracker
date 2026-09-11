@@ -1,102 +1,195 @@
+// ==========================================
+// AI ELIGIBILITY CALCULATOR
+// ==========================================
+
 function calculateEligibility(user, company) {
   let score = 100;
-  let results = [];
 
-  // Branch Check
-  if (
-    company.eligibleBranches &&
-    company.eligibleBranches.length > 0 &&
-    !company.eligibleBranches.includes(user.branch)
-  ) {
-    score -= 30;
-    results.push({
-      status: "❌",
-      message: "Branch not eligible",
-    });
+  const results = [];
+  const missingSkills = [];
+
+  // ==========================================
+  // 1. BRANCH CHECK
+  // ==========================================
+
+  const eligibleBranches = Array.isArray(company.eligibleBranches)
+    ? company.eligibleBranches
+    : [];
+
+  if (eligibleBranches.length > 0) {
+    const userBranch = String(user.branch || "")
+      .trim()
+      .toLowerCase();
+
+    const branchEligible = eligibleBranches.some(
+      (branch) =>
+        String(branch).trim().toLowerCase() === userBranch
+    );
+
+    if (!branchEligible) {
+      score -= 30;
+
+      results.push({
+        status: "❌",
+        type: "branch",
+        message: "Your branch is not eligible for this company.",
+      });
+    } else {
+      results.push({
+        status: "✅",
+        type: "branch",
+        message: "Your branch is eligible.",
+      });
+    }
   } else {
     results.push({
       status: "✅",
-      message: "Branch eligible",
+      type: "branch",
+      message: "No specific branch restriction.",
     });
   }
 
-  // CGPA Check
-  if ((user.cgpa || 0) < (company.minimumCGPA || 0)) {
+  // ==========================================
+  // 2. CGPA CHECK
+  // ==========================================
+
+  const userCGPA = Number(user.cgpa || 0);
+  const minimumCGPA = Number(company.minimumCGPA || 0);
+
+  if (userCGPA < minimumCGPA) {
     score -= 25;
+
     results.push({
       status: "❌",
-      message: `Minimum CGPA required: ${company.minimumCGPA}`,
+      type: "cgpa",
+      message: `Minimum CGPA required: ${minimumCGPA}. Your CGPA: ${userCGPA}.`,
     });
   } else {
     results.push({
       status: "✅",
-      message: "CGPA eligible",
+      type: "cgpa",
+      message: `CGPA eligible. Your CGPA: ${userCGPA}.`,
     });
   }
 
-  // Skills Check
-  const userSkills = (user.skills || []).map((skill) =>
-    skill.toLowerCase()
+  // ==========================================
+  // 3. SKILLS CHECK
+  // ==========================================
+
+  const userSkills = Array.isArray(user.skills)
+    ? user.skills
+    : [];
+
+  const requiredSkills = Array.isArray(company.skillsRequired)
+    ? company.skillsRequired
+    : [];
+
+  const normalizedUserSkills = userSkills.map((skill) =>
+    String(skill).trim().toLowerCase()
   );
 
-  const requiredSkills = company.skillsRequired || [];
+  requiredSkills.forEach((skill) => {
+    const normalizedSkill = String(skill)
+      .trim()
+      .toLowerCase();
 
-  const missingSkills = requiredSkills.filter(
-    (skill) => !userSkills.includes(skill.toLowerCase())
-  );
+    if (!normalizedUserSkills.includes(normalizedSkill)) {
+      missingSkills.push(skill);
+    }
+  });
 
   if (missingSkills.length > 0) {
-    score -= missingSkills.length * 10;
+    // Maximum skill penalty = 30
+    const skillPenalty = Math.min(
+      missingSkills.length * 10,
+      30
+    );
+
+    score -= skillPenalty;
 
     results.push({
-      status: "⚠",
-      message: `Missing Skills: ${missingSkills.join(", ")}`,
+      status: "⚠️",
+      type: "skills",
+      message: `Missing skills: ${missingSkills.join(", ")}`,
     });
   } else {
     results.push({
       status: "✅",
-      message: "All required skills available",
+      type: "skills",
+      message: "All required skills are available.",
     });
   }
 
-  // Resume Check
-  if (
-    !user.resume ||
-    !user.resume.filePath
-  ) {
+  // ==========================================
+  // 4. RESUME CHECK
+  // ==========================================
+
+  if (!user.resume || !user.resume.filePath) {
     score -= 15;
 
     results.push({
-      status: "⚠",
-      message: "Resume not uploaded",
+      status: "⚠️",
+      type: "resume",
+      message: "Resume has not been uploaded.",
     });
   } else {
     results.push({
       status: "✅",
-      message: "Resume uploaded",
+      type: "resume",
+      message: "Resume uploaded.",
     });
   }
 
-  if (score < 0) score = 0;
+  // ==========================================
+  // 5. KEEP SCORE BETWEEN 0 AND 100
+  // ==========================================
+
+  score = Math.max(0, Math.min(score, 100));
+
+  // ==========================================
+  // 6. ELIGIBILITY STATUS
+  // ==========================================
+
+  let eligibilityStatus = "";
+
+  if (score >= 85) {
+    eligibilityStatus = "Highly Eligible";
+  } else if (score >= 70) {
+    eligibilityStatus = "Eligible";
+  } else if (score >= 50) {
+    eligibilityStatus = "Partially Eligible";
+  } else {
+    eligibilityStatus = "Not Eligible";
+  }
+
+  // ==========================================
+  // 7. RECOMMENDATION
+  // ==========================================
 
   let recommendation = "";
 
   if (score >= 85) {
     recommendation =
-      "Excellent match. Apply immediately.";
+      "Excellent match. You should apply immediately.";
   } else if (score >= 70) {
     recommendation =
-      "Good match. Improve a few skills before applying.";
+      "Good match. You are eligible, but improving a few areas will strengthen your profile.";
   } else if (score >= 50) {
     recommendation =
-      "Moderate match. Consider improving your profile.";
+      "Moderate match. Improve your skills, CGPA, or profile before applying.";
   } else {
     recommendation =
-      "Low eligibility. Focus on skills and CGPA before applying.";
+      "Low eligibility. Focus on improving your profile before applying.";
   }
+
+  // ==========================================
+  // FINAL RESULT
+  // ==========================================
 
   return {
     score,
+    eligibilityStatus,
+    missingSkills,
     results,
     recommendation,
   };

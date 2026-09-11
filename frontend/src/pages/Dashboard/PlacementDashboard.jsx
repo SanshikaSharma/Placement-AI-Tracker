@@ -1,73 +1,154 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../../services/api";
 
 function PlacementDashboard() {
-  const [stats, setStats] = useState({
-    totalCompanies: 0,
-    totalApplications: 0,
-    selected: 0,
-    pending: 0,
-  });
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const loadDashboard = async () => {
+    const loadCompanies = async () => {
       try {
-        const res = await api.get("/dashboard");
+        // Correct Backend Route
+        const res = await api.get("/company");
 
-        setStats({
-          totalCompanies: res.data.totalCompanies,
-          totalApplications: res.data.totalApplications,
-          selected: res.data.selected,
-          pending: res.data.pending,
-        });
+        if (res.data.success) {
+          setCompanies(res.data.companies || []);
+        }
+      } catch (error) {
+        console.error("Company Load Error:", error);
 
-      } catch (err) {
-        console.error(err);
+        alert(
+          error.response?.data?.message ||
+            "Unable to load companies."
+        );
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadDashboard();
+    loadCompanies();
   }, []);
 
+  const filteredCompanies = companies.filter((company) => {
+    const text = search.toLowerCase();
+
+    return (
+      company.companyName?.toLowerCase().includes(text) ||
+      company.role?.toLowerCase().includes(text) ||
+      company.location?.toLowerCase().includes(text)
+    );
+  });
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen text-2xl font-bold">
+        Loading Companies...
+      </div>
+    );
+  }
+
   return (
-    <div className="p-8">
+    <div className="min-h-screen bg-gray-100 p-8">
 
-      <h1 className="text-4xl font-bold mb-8">
-        Placement Dashboard
-      </h1>
+      <div className="flex justify-between items-center mb-8">
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2>Companies</h2>
+        <div>
           <h1 className="text-4xl font-bold">
-            {stats.totalCompanies}
+            Placement Dashboard
           </h1>
-        </div>
 
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2>Applications</h2>
-          <h1 className="text-4xl font-bold">
-            {stats.totalApplications}
-          </h1>
-        </div>
-
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2>Selected</h2>
-          <h1 className="text-4xl font-bold text-green-600">
-            {stats.selected}
-          </h1>
-        </div>
-
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2>Pending</h2>
-          <h1 className="text-4xl font-bold text-orange-600">
-            {stats.pending}
-          </h1>
+          <p className="text-gray-600 mt-2">
+            Explore the latest placement opportunities.
+          </p>
         </div>
 
       </div>
 
+      <input
+        type="text"
+        placeholder="Search Company / Role / Location..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full border rounded-xl p-4 mb-8"
+      />
+
+      {filteredCompanies.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          <h2 className="text-2xl font-semibold">
+            No Companies Found
+          </h2>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          {filteredCompanies.map((company) => (
+
+            <div
+              key={company._id}
+              className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition"
+            >
+
+              <h2 className="text-2xl font-bold">
+                {company.companyName}
+              </h2>
+
+              <p className="mt-2">
+                <strong>Role:</strong> {company.role}
+              </p>
+
+              <p>
+                <strong>Package:</strong> {company.package}
+              </p>
+
+              <p>
+                <strong>Location:</strong> {company.location}
+              </p>
+
+              <p>
+                <strong>Minimum CGPA:</strong>{" "}
+                {company.minimumCGPA}
+              </p>
+
+              <p>
+                <strong>Deadline:</strong>{" "}
+                {company.deadline
+                  ? new Date(company.deadline).toLocaleDateString()
+                  : "-"}
+              </p>
+
+              <div className="mt-4">
+
+                <span
+                  className={`px-4 py-2 rounded-full text-white ${
+                    company.status === "Open"
+                      ? "bg-green-600"
+                      : "bg-red-600"
+                  }`}
+                >
+                  {company.status}
+                </span>
+
+              </div>
+
+              <div className="mt-6 flex gap-3">
+
+                <Link
+                  to={`/company/${company._id}`}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+                >
+                  View Details
+                </Link>
+
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+      )}
     </div>
   );
 }

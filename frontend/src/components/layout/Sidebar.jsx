@@ -1,12 +1,71 @@
 import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getMyNotifications } from "../../services/notificationService";
 
 function Sidebar() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const getCurrentUser = () => {
+    const storedUser = sessionStorage.getItem("user");
+
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(storedUser);
+    } catch (error) {
+      console.error("User Data Parse Error:", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUnreadNotifications = async () => {
+      try {
+        const user = getCurrentUser();
+
+        const studentId = user?._id || user?.id;
+
+        if (!studentId) {
+          return;
+        }
+
+        const res = await getMyNotifications(studentId);
+
+        if (!cancelled && res.success) {
+          setUnreadCount(res.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error(
+          "Notification Count Error:",
+          error
+        );
+      }
+    };
+
+    loadUnreadNotifications();
+
+    // Check for new notifications every 30 seconds
+    const interval = setInterval(
+      loadUnreadNotifications,
+      30000
+    );
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
   const menuItems = [
-   {
-  name: "Dashboard",
-  path: "/dashboard",
-  icon: "🏠",
-},
+    {
+      name: "Dashboard",
+      path: "/dashboard",
+      icon: "🏠",
+    },
     {
       name: "My Profile",
       path: "/profile",
@@ -22,6 +81,7 @@ function Sidebar() {
       path: "/resume-analysis",
       icon: "🤖",
     },
+    
     {
       name: "Companies",
       path: "/companies",
@@ -43,16 +103,31 @@ function Sidebar() {
       icon: "💼",
     },
     {
+      name: "Recommendations",
+      path: "/recommendations",
+      icon: "⭐",
+    },
+    {
       name: "Analytics",
       path: "/analytics",
       icon: "📊",
     },
-  
+    {
+      name: "Notifications",
+      path: "/notifications",
+      icon: "🔔",
+    },
+    {
+  name: "AI Interview",
+  path: "/ai-interview",
+  icon: "🤖",
+}
   ];
 
   return (
     <aside className="w-64 min-h-screen bg-blue-900 text-white shadow-lg">
 
+      {/* Logo */}
       <div className="p-6 border-b border-blue-700">
         <h1 className="text-2xl font-bold">
           Placement AI
@@ -63,6 +138,7 @@ function Sidebar() {
         </p>
       </div>
 
+      {/* Navigation */}
       <nav className="mt-6 px-3">
 
         {menuItems.map((item) => (
@@ -81,7 +157,19 @@ function Sidebar() {
               {item.icon}
             </span>
 
-            <span>{item.name}</span>
+            <span className="flex-1">
+              {item.name}
+            </span>
+
+            {/* Notification Badge */}
+            {item.path === "/notifications" &&
+              unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold min-w-5.5 h-5.5 px-1 rounded-full flex items-center justify-center">
+                  {unreadCount > 99
+                    ? "99+"
+                    : unreadCount}
+                </span>
+              )}
           </NavLink>
         ))}
 

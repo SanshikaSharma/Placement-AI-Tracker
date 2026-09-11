@@ -1,39 +1,819 @@
 const User = require("../models/User");
 const Company = require("../models/Company");
 const Application = require("../models/Application");
+const Notification = require("../models/Notification");
 
-const getAdminDashboard = async (req, res) => {
-  
-  console.log("ADMIN DASHBOARD API HIT");
+const { sendEmail } = require("../utils/emailService");
 
+// ======================================================
+// ADMIN DASHBOARD
+// ======================================================
+
+const getDashboardStats = async (req, res) => {
   try {
-    const users = await User.find();
-    const companies = await Company.find();
-    const applications = await Application.find();
-
-    res.json({
-      success: true,
-      totalStudents: users.length,
-      totalCompanies: companies.length,
-      totalApplications: applications.length,
-      selectedStudents: applications.filter(
-        (app) => app.status === "Selected"
-      ).length,
-      recentApplications: [],
-      recentCompanies: [],
+    const totalStudents = await User.countDocuments({
+      role: "student",
     });
 
+    const totalCompanies = await Company.countDocuments();
+
+    const totalApplications =
+      await Application.countDocuments();
+
+    const selected = await Application.countDocuments({
+      status: "Selected",
+    });
+
+    const pending = await Application.countDocuments({
+      status: "Applied",
+    });
+
+    const resumeUploaded = await User.countDocuments({
+      "resume.fileName": { $exists: true, $ne: "" },
+    });
+
+    res.status(200).json({
+      success: true,
+      totalStudents,
+      totalCompanies,
+      totalApplications,
+      selected,
+      pending,
+      resumeUploaded,
+    });
   } catch (error) {
-    console.error("ADMIN ERROR:", error);
+    console.error("Dashboard Stats Error:", error);
 
     res.status(500).json({
       success: false,
-      message: error.message,
-      stack: error.stack,
+      message: "Unable to load dashboard statistics",
     });
   }
 };
 
+// ======================================================
+// ADMIN ANALYTICS
+// ======================================================
+
+const getAnalytics = async (req, res) => {
+  try {
+    const totalStudents = await User.countDocuments({
+      role: "student",
+    });
+
+    const totalCompanies = await Company.countDocuments();
+
+    const totalApplications =
+      await Application.countDocuments();
+
+    const selectedApplications =
+      await Application.countDocuments({
+        status: "Selected",
+      });
+
+    const rejectedApplications =
+      await Application.countDocuments({
+        status: "Rejected",
+      });
+
+    const interviewApplications =
+      await Application.countDocuments({
+        status: "Interview",
+      });
+
+    const appliedApplications =
+      await Application.countDocuments({
+        status: "Applied",
+      });
+
+    const pendingApplications =
+      await Application.countDocuments({
+        status: "Pending",
+      });
+
+    const shortlistedApplications =
+      await Application.countDocuments({
+        status: "Shortlisted",
+      });
+
+    const oaApplications =
+      await Application.countDocuments({
+        status: "OA",
+      });
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        totalStudents,
+        totalCompanies,
+        totalApplications,
+        selectedApplications,
+        rejectedApplications,
+        interviewApplications,
+        appliedApplications,
+        pendingApplications,
+        shortlistedApplications,
+        oaApplications,
+      },
+    });
+  } catch (error) {
+    console.error("Analytics Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load analytics",
+    });
+  }
+};
+
+// ======================================================
+// GET ALL STUDENTS
+// ======================================================
+
+const getAllStudents = async (req, res) => {
+  try {
+    const students = await User.find({
+      role: "student",
+    })
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: students.length,
+      students,
+    });
+  } catch (error) {
+    console.error("Get Students Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load students",
+    });
+  }
+};
+
+// ======================================================
+// GET SINGLE STUDENT DETAILS
+// ======================================================
+
+const getStudentDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const student = await User.findOne({
+      _id: id,
+      role: "student",
+    }).select("-password");
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const applications = await Application.find({
+      student: id,
+    })
+      .populate("company")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      student,
+      applications,
+    });
+  } catch (error) {
+    console.error("Student Details Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load student details",
+    });
+  }
+};
+
+// ======================================================
+// DELETE STUDENT
+// ======================================================
+
+const deleteStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const student = await User.findOne({
+      _id: id,
+      role: "student",
+    });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    await Application.deleteMany({
+      student: id,
+    });
+
+    await Notification.deleteMany({
+      student: id,
+    });
+
+    await User.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Student deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Student Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to delete student",
+    });
+  }
+};
+
+// ======================================================
+// GET ALL COMPANIES
+// ======================================================
+
+const getAllCompanies = async (req, res) => {
+  try {
+    const companies = await Company.find().sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      count: companies.length,
+      companies,
+    });
+  } catch (error) {
+    console.error("Get Companies Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load companies",
+    });
+  }
+};
+
+// ======================================================
+// DELETE COMPANY
+// ======================================================
+
+const deleteCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const company = await Company.findById(id);
+
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: "Company not found",
+      });
+    }
+
+    await Application.deleteMany({
+      company: id,
+    });
+
+    await Company.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Company deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Company Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to delete company",
+    });
+  }
+};
+
+// ======================================================
+// GET ALL APPLICATIONS
+// ======================================================
+
+const getAllApplications = async (req, res) => {
+  try {
+    const applications = await Application.find()
+      .populate("student", "-password")
+      .populate("company")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: applications.length,
+      applications,
+    });
+  } catch (error) {
+    console.error("Get Applications Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load applications",
+    });
+  }
+};
+
+// ======================================================
+// UPDATE APPLICATION STATUS
+// ======================================================
+
+const updateApplicationStatus = async (req, res) => {
+  try {
+    // IMPORTANT:
+    // adminRoutes.js uses /application/:id
+    // therefore the parameter is req.params.id
+
+    const { id } = req.params;
+    const applicationId = id;
+    const { status } = req.body;
+
+    console.log(
+      "UPDATE APPLICATION:",
+      applicationId,
+      status
+    );
+
+    // --------------------------------------------------
+    // VALIDATE STATUS
+    // --------------------------------------------------
+
+    const allowedStatuses = [
+      "Applied",
+      "Pending",
+      "OA",
+      "Shortlisted",
+      "Interview",
+      "Selected",
+      "Rejected",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid application status",
+      });
+    }
+
+    // --------------------------------------------------
+    // FIND APPLICATION
+    // --------------------------------------------------
+
+    const application =
+      await Application.findById(applicationId);
+
+    if (!application) {
+      console.log("APPLICATION NOT FOUND");
+
+      return res.status(404).json({
+        success: false,
+        message: "Application not found",
+      });
+    }
+
+    // --------------------------------------------------
+    // UPDATE STATUS
+    // --------------------------------------------------
+
+    application.status = status;
+
+    console.log(
+      "STEP 1: Saving application status..."
+    );
+
+    await application.save();
+
+    console.log(
+      "STEP 2: Application status saved."
+    );
+
+    // --------------------------------------------------
+    // FIND STUDENT
+    // --------------------------------------------------
+
+    const student = await User.findById(
+      application.student
+    );
+
+    console.log(
+      "STEP 3: Student loaded:",
+      student
+        ? student.email
+        : "STUDENT NOT FOUND"
+    );
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // --------------------------------------------------
+    // FIND COMPANY
+    // --------------------------------------------------
+
+    const company = await Company.findById(
+      application.company
+    );
+
+    console.log(
+      "STEP 4: Company loaded:",
+      company
+        ? company.name
+        : "COMPANY NOT FOUND"
+    );
+
+    const companyName = company
+      ? company.name
+      : "the company";
+
+    // --------------------------------------------------
+    // DEFAULT NOTIFICATION / EMAIL
+    // --------------------------------------------------
+
+    let notificationTitle =
+      "Application Status Updated";
+
+    let notificationMessage =
+      `Your application for ${companyName} has been updated to ${status}.`;
+
+    let notificationType = "Application";
+
+    let emailSubject =
+      `Application Status Updated - ${companyName}`;
+
+    let emailText =
+      `Your application for ${companyName} has been updated to ${status}.`;
+
+    let emailHtml = `
+      <h2>Application Status Updated</h2>
+
+      <p>Hello ${student.name || "Student"},</p>
+
+      <p>
+        Your application for
+        <strong>${companyName}</strong>
+        has been updated to:
+      </p>
+
+      <h3>${status}</h3>
+
+      <p>
+        Please check your placement portal
+        for more details.
+      </p>
+
+      <br>
+
+      <p>
+        Regards,<br>
+        Placement AI Tracker
+      </p>
+    `;
+
+    // --------------------------------------------------
+    // INTERVIEW
+    // --------------------------------------------------
+
+    if (status === "Interview") {
+      notificationTitle = "Interview Update";
+
+      notificationMessage =
+        `Your application for ${companyName} has been moved to Interview stage.`;
+
+      notificationType = "Interview";
+
+      emailSubject =
+        `Interview Update - ${companyName}`;
+
+      emailText =
+        `Your application for ${companyName} has been moved to the Interview stage.`;
+
+      emailHtml = `
+        <h2>Interview Update</h2>
+
+        <p>Hello ${student.name || "Student"},</p>
+
+        <p>
+          Your application for
+          <strong>${companyName}</strong>
+          has been moved to the
+          <strong>Interview</strong> stage.
+        </p>
+
+        <p>
+          Please check your placement portal
+          for more details.
+        </p>
+
+        <br>
+
+        <p>
+          Regards,<br>
+          Placement AI Tracker
+        </p>
+      `;
+    }
+
+    // --------------------------------------------------
+    // SELECTED
+    // --------------------------------------------------
+
+    else if (status === "Selected") {
+      notificationTitle =
+        "Congratulations! 🎉";
+
+      notificationMessage =
+        `Congratulations! You have been selected by ${companyName}.`;
+
+      notificationType = "Selection";
+
+      emailSubject =
+        `Congratulations! You have been selected by ${companyName}`;
+
+      emailText =
+        `Congratulations! You have been selected by ${companyName}.`;
+
+      emailHtml = `
+        <h2>Congratulations! 🎉</h2>
+
+        <p>Hello ${student.name || "Student"},</p>
+
+        <p>
+          We are happy to inform you that you have been
+          <strong>selected</strong> by
+          <strong>${companyName}</strong>.
+        </p>
+
+        <p>
+          Congratulations on your achievement!
+        </p>
+
+        <p>
+          Please check your placement portal
+          for further details.
+        </p>
+
+        <br>
+
+        <p>
+          Regards,<br>
+          Placement AI Tracker
+        </p>
+      `;
+    }
+
+    // --------------------------------------------------
+    // REJECTED
+    // --------------------------------------------------
+
+    else if (status === "Rejected") {
+      notificationTitle =
+        "Application Status Update";
+
+      notificationMessage =
+        `Your application for ${companyName} was not selected at this stage. Keep applying and keep improving.`;
+
+      notificationType = "Rejection";
+
+      emailSubject =
+        `Application Status Update - ${companyName}`;
+
+      emailText =
+        `Your application for ${companyName} was not selected at this stage. Keep applying and keep improving.`;
+
+      emailHtml = `
+        <h2>Application Status Update</h2>
+
+        <p>Hello ${student.name || "Student"},</p>
+
+        <p>
+          Your application for
+          <strong>${companyName}</strong>
+          was not selected at this stage.
+        </p>
+
+        <p>
+          Do not lose hope. Keep applying,
+          learning and improving your skills.
+        </p>
+
+        <br>
+
+        <p>
+          Regards,<br>
+          Placement AI Tracker
+        </p>
+      `;
+    }
+
+    // --------------------------------------------------
+    // CREATE NOTIFICATION
+    // --------------------------------------------------
+
+    console.log(
+      "STEP 5: Creating notification..."
+    );
+
+    const notification =
+      await Notification.create({
+        student: student._id,
+        title: notificationTitle,
+        message: notificationMessage,
+        type: notificationType,
+      });
+
+    console.log(
+      "Status Notification Created:",
+      notification._id
+    );
+
+    // --------------------------------------------------
+    // SEND EMAIL
+    // --------------------------------------------------
+
+    console.log(
+      "STEP 6: Sending status email to:",
+      student.email
+    );
+
+    const emailResult = await sendEmail({
+      to: student.email,
+      subject: emailSubject,
+      text: emailText,
+      html: emailHtml,
+    });
+
+    if (emailResult.success) {
+      console.log(
+        "Status Email Sent Successfully:",
+        emailResult.messageId
+      );
+    } else {
+      console.error(
+        "Status Email Failed:",
+        emailResult.message
+      );
+    }
+
+    // --------------------------------------------------
+    // GET UPDATED APPLICATION
+    // --------------------------------------------------
+
+    const updatedApplication =
+      await Application.findById(applicationId)
+        .populate("student", "-password")
+        .populate("company");
+
+    // --------------------------------------------------
+    // RESPONSE
+    // --------------------------------------------------
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Application status updated successfully",
+      application: updatedApplication,
+      notificationCreated: true,
+      emailSent: emailResult.success,
+      emailMessage: emailResult.success
+        ? "Status email sent successfully"
+        : emailResult.message,
+    });
+  } catch (error) {
+    console.error(
+      "Update Application Status Error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Unable to update application status",
+      error: error.message,
+    });
+  }
+};
+
+// ======================================================
+// GET STUDENT RESUME
+// ======================================================
+
+const getStudentResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const student = await User.findOne({
+      _id: id,
+      role: "student",
+    }).select("name email resume");
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    if (
+      !student.resume ||
+      !student.resume.fileName
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not uploaded",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      resume: student.resume,
+    });
+  } catch (error) {
+    console.error("Get Resume Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load resume",
+    });
+  }
+};
+
+// ======================================================
+// DELETE APPLICATION
+// ======================================================
+
+const deleteApplication = async (req, res) => {
+  try {
+    // IMPORTANT:
+    // adminRoutes.js uses /application/:id
+
+    const { id } = req.params;
+    const applicationId = id;
+
+    console.log(
+      "DELETE APPLICATION:",
+      applicationId
+    );
+
+    const application =
+      await Application.findById(applicationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found",
+      });
+    }
+
+    await Application.findByIdAndDelete(
+      applicationId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Application deleted successfully",
+    });
+  } catch (error) {
+    console.error(
+      "Delete Application Error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to delete application",
+    });
+  }
+};
+
+// ======================================================
+// EXPORTS
+// ======================================================
+
 module.exports = {
-  getAdminDashboard,
+  getDashboardStats,
+  getAnalytics,
+  getAllStudents,
+  getStudentDetails,
+  deleteStudent,
+  getAllCompanies,
+  deleteCompany,
+  getAllApplications,
+  updateApplicationStatus,
+  getStudentResume,
+  deleteApplication,
 };

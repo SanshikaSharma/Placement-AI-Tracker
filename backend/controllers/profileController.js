@@ -1,7 +1,27 @@
 const User = require("../models/User");
 
 // ==========================
-// GET PROFILE
+// GET ALL PROFILES
+// ==========================
+const getAllProfiles = async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ==========================
+// GET SINGLE PROFILE
 // ==========================
 const getProfile = async (req, res) => {
   try {
@@ -20,7 +40,6 @@ const getProfile = async (req, res) => {
       success: true,
       user,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -45,12 +64,18 @@ const updateProfile = async (req, res) => {
       }
     ).select("-password");
 
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
     res.json({
       success: true,
       message: "Profile Updated Successfully",
       user: updatedUser,
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -60,6 +85,7 @@ const updateProfile = async (req, res) => {
 };
 
 module.exports = {
+  getAllProfiles,
   getProfile,
   updateProfile,
 };

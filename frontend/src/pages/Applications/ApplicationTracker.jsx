@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
+
+import { getCompanies } from "../../services/companyService";
+
 import {
-  getCompanies,
   applyToCompany,
-} from "../../services/companyService";
-import {
   getMyApplications,
 } from "../../services/applicationService";
-import {
-  checkEligibility,
-} from "../../services/eligibilityService";
+
+import { checkEligibility } from "../../services/eligibilityService";
 
 function ApplicationTracker() {
   const [companies, setCompanies] = useState([]);
@@ -18,20 +17,66 @@ function ApplicationTracker() {
   const [analysis, setAnalysis] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState(null);
 
+  // =========================================
+  // GET CURRENT LOGGED-IN STUDENT
+  // =========================================
+  const getCurrentStudent = () => {
+    const storedUser =
+      sessionStorage.getItem("user");
+
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(storedUser);
+    } catch (error) {
+      console.error(
+        "User Data Parse Error:",
+        error
+      );
+
+      return null;
+    }
+  };
+
+  // =========================================
+  // FETCH COMPANIES + STUDENT APPLICATIONS
+  // =========================================
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem("user"));
+        const user =
+          getCurrentStudent();
 
-        const companyRes = await getCompanies();
-        setCompanies(companyRes.companies || []);
+        const studentId =
+          user?._id || user?.id;
 
-        if (user?.id) {
-          const appRes = await getMyApplications(user.id);
-          setApplications(appRes.applications || []);
+        // Companies are common for all students
+        const companyRes =
+          await getCompanies();
+
+        setCompanies(
+          companyRes.companies || []
+        );
+
+        // Applications are ONLY for
+        // the currently logged-in student
+        if (studentId) {
+          const appRes =
+            await getMyApplications(
+              studentId
+            );
+
+          setApplications(
+            appRes.applications || []
+          );
         }
       } catch (err) {
-        console.error(err);
+        console.error(
+          "Application Tracker Error:",
+          err
+        );
       } finally {
         setLoading(false);
       }
@@ -40,50 +85,99 @@ function ApplicationTracker() {
     fetchData();
   }, []);
 
+  // =========================================
+  // APPLY TO COMPANY
+  // =========================================
   const handleApply = async (companyId) => {
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user =
+        getCurrentStudent();
 
-      if (!user?.id) {
+      const studentId =
+        user?._id || user?.id;
+
+      if (!studentId) {
         alert("Please login first");
         return;
       }
 
-      const res = await applyToCompany(user.id, companyId);
+      const res =
+        await applyToCompany({
+          companyId,
+          studentId,
+        });
 
       alert(res.message);
 
-      const appRes = await getMyApplications(user.id);
-      setApplications(appRes.applications || []);
+      // Refresh ONLY current student's applications
+      const appRes =
+        await getMyApplications(
+          studentId
+        );
 
+      setApplications(
+        appRes.applications || []
+      );
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Apply Error:",
+        err
+      );
 
       alert(
         err.response?.data?.message ||
-        "Unable to Apply"
+          err.message ||
+          "Unable to Apply"
       );
     }
   };
 
-  const handleEligibility = async (companyId) => {
+  // =========================================
+  // AI ELIGIBILITY
+  // =========================================
+  const handleEligibility = async (
+    companyId
+  ) => {
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user =
+        getCurrentStudent();
 
-      const res = await checkEligibility(
-        user.id,
+      const studentId =
+        user?._id || user?.id;
+
+      if (!studentId) {
+        alert("Please login first");
+        return;
+      }
+
+      const res =
+        await checkEligibility(
+          studentId,
+          companyId
+        );
+
+      setAnalysis(
+        res.analysis
+      );
+
+      setSelectedCompany(
         companyId
       );
-
-      setAnalysis(res.analysis);
-      setSelectedCompany(companyId);
-
     } catch (err) {
-      console.error(err);
-      alert("Unable to check eligibility");
+      console.error(
+        "Eligibility Error:",
+        err
+      );
+
+      alert(
+        "Unable to check eligibility"
+      );
     }
   };
 
+  // =========================================
+  // LOADING
+  // =========================================
   if (loading) {
     return (
       <div className="p-10 text-xl font-semibold">
@@ -92,6 +186,9 @@ function ApplicationTracker() {
     );
   }
 
+  // =========================================
+  // PAGE
+  // =========================================
   return (
     <div className="p-8">
 
@@ -103,9 +200,14 @@ function ApplicationTracker() {
 
         {companies.map((company) => {
 
-          const alreadyApplied = applications.find(
-            (app) => app.company?._id === company._id
-          );
+          // Check application ONLY against
+          // current student's applications
+          const alreadyApplied =
+            applications.find(
+              (app) =>
+                app.company?._id ===
+                company._id
+            );
 
           return (
             <div
@@ -124,15 +226,24 @@ function ApplicationTracker() {
               <div className="mt-4 space-y-2">
 
                 <p>
-                  <strong>Package:</strong> {company.package}
+                  <strong>
+                    Package:
+                  </strong>{" "}
+                  {company.package}
                 </p>
 
                 <p>
-                  <strong>Location:</strong> {company.location}
+                  <strong>
+                    Location:
+                  </strong>{" "}
+                  {company.location}
                 </p>
 
                 <p>
-                  <strong>Status:</strong> {company.status}
+                  <strong>
+                    Status:
+                  </strong>{" "}
+                  {company.status}
                 </p>
 
               </div>
@@ -140,13 +251,17 @@ function ApplicationTracker() {
               {alreadyApplied ? (
                 <button
                   disabled
-                  className="w-full mt-6 bg-gray-400 text-white py-3 rounded-xl"
+                  className="w-full mt-6 bg-gray-400 text-white py-3 rounded-xl cursor-not-allowed"
                 >
                   Applied
                 </button>
               ) : (
                 <button
-                  onClick={() => handleApply(company._id)}
+                  onClick={() =>
+                    handleApply(
+                      company._id
+                    )
+                  }
                   className="w-full mt-6 bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-xl"
                 >
                   Apply Now
@@ -154,35 +269,49 @@ function ApplicationTracker() {
               )}
 
               <button
-                onClick={() => handleEligibility(company._id)}
+                onClick={() =>
+                  handleEligibility(
+                    company._id
+                  )
+                }
                 className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl"
               >
                 Check AI Eligibility
               </button>
 
-              {selectedCompany === company._id && analysis && (
-                <div className="mt-6 border rounded-xl p-4 bg-gray-50">
+              {selectedCompany ===
+                company._id &&
+                analysis && (
+                  <div className="mt-6 border rounded-xl p-4 bg-gray-50">
 
-                  <h3 className="text-xl font-bold text-green-700">
-                    AI Score : {analysis.score}%
-                  </h3>
+                    <h3 className="text-xl font-bold text-green-700">
+                      AI Score :{" "}
+                      {analysis.score}%
+                    </h3>
 
-                  <div className="mt-3">
+                    <div className="mt-3">
 
-                    {analysis.results.map((item, index) => (
-                      <p key={index}>
-                        {item.status} {item.message}
-                      </p>
-                    ))}
+                      {analysis.results?.map(
+                        (item, index) => (
+                          <p
+                            key={index}
+                          >
+                            {item.status}{" "}
+                            {item.message}
+                          </p>
+                        )
+                      )}
+
+                    </div>
+
+                    <div className="mt-4 font-semibold text-blue-700">
+                      {
+                        analysis.recommendation
+                      }
+                    </div>
 
                   </div>
-
-                  <div className="mt-4 font-semibold text-blue-700">
-                    {analysis.recommendation}
-                  </div>
-
-                </div>
-              )}
+                )}
 
             </div>
           );

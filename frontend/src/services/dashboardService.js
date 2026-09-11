@@ -1,15 +1,9 @@
 import api from "./api";
 
-export const getDashboardData = async () => {
-  const [companies, applications, profiles] = await Promise.all([
-    api.get("/company/all"),
-    api.get("/application/all"),
-    api.get("/profile/all"),
-  ]);
+export const getDashboardData = async (studentId) => {
+  const res = await api.get(
+    `/dashboard/${studentId}`
+  );
 
-  return {
-    companies: companies.data.companies || [],
-    applications: applications.data.applications || [],
-    profiles: profiles.data.profiles || [],
-  };
+  return res.data;
 };

@@ -1,15 +1,25 @@
 const mongoose = require("mongoose");
+const dns = require("dns");
+
+// Helps MongoDB Atlas connection on some Windows networks
+dns.setDefaultResultOrder("ipv4first");
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const mongoURI = process.env.MONGO_URI;
 
-    console.log("✅ MongoDB Connected");
-    console.log("Database Name:", mongoose.connection.name);
-    console.log("Host:", mongoose.connection.host);
+    if (!mongoURI) {
+      console.error("MONGO_URI is missing in .env");
+      process.exit(1);
+    }
 
+    await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 10000,
+    });
+
+    console.log("MongoDB Connected Successfully");
   } catch (error) {
-    console.log("DB Error:", error.message);
+    console.error("DB Error:", error.message);
     process.exit(1);
   }
 };

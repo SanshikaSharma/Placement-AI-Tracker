@@ -12,49 +12,132 @@ function ResumePage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const getCurrentUser = () => {
+    const storedUser = sessionStorage.getItem("user");
 
- const loadResume = useCallback(async () => {
-  try {
-    if (!user?.id) return;
+    if (!storedUser) return null;
 
-    const data = await getResume(user.id);
-
-    if (data.success) {
-      setResume(data.resume);
+    try {
+      return JSON.parse(storedUser);
+    } catch (error) {
+      console.error("User Data Error:", error);
+      return null;
     }
-  } catch (error) {
-    console.error(error);
-  }
-}, [user?.id]);
-
- useEffect(() => {
-  const fetchData = async () => {
-    await loadResume();
   };
 
-  fetchData();
-}, [loadResume]);
+  const loadResume = useCallback(async () => {
+    try {
+      const currentUser = getCurrentUser();
+      const userId = currentUser?._id || currentUser?.id;
+
+      if (!userId) {
+        setMessage("Please login again.");
+        return;
+      }
+
+      const data = await getResume(userId);
+
+      if (data.success) {
+        setResume(data.resume);
+      }
+    } catch (error) {
+      // 404 simply means this student has no uploaded resume
+      if (error.response?.status === 404) {
+        setResume(null);
+        console.log("No resume uploaded for current student.");
+      } else {
+        console.error("Get Resume Error:", error);
+      }
+    }
+  }, []);
+
+ useEffect(() => {
+  let cancelled = false;
+
+  const fetchResume = async () => {
+    try {
+      const storedUser = sessionStorage.getItem("user");
+
+      if (!storedUser) {
+        if (!cancelled) {
+          setMessage("Please login again.");
+        }
+        return;
+      }
+
+      const currentUser = JSON.parse(storedUser);
+      const userId = currentUser?._id || currentUser?.id;
+
+      if (!userId) {
+        if (!cancelled) {
+          setMessage("Please login again.");
+        }
+        return;
+      }
+
+      const data = await getResume(userId);
+
+      if (!cancelled && data.success) {
+        setResume(data.resume);
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        if (!cancelled) {
+          setResume(null);
+        }
+      } else {
+        console.error("Get Resume Error:", error);
+
+        if (!cancelled) {
+          setMessage(
+            error.response?.data?.message ||
+              "Unable to load resume."
+          );
+        }
+      }
+    }
+  };
+
+  fetchResume();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
   const handleUpload = async () => {
+    const currentUser = getCurrentUser();
+    const userId = currentUser?._id || currentUser?.id;
+
+    if (!userId) {
+      setMessage("Please login again.");
+      return;
+    }
+
     if (!file) {
       setMessage("Please select a PDF.");
       return;
     }
 
     const formData = new FormData();
+
     formData.append("resume", file);
-    formData.append("userId", user.id);
+    formData.append("userId", userId);
 
     try {
       setLoading(true);
+      setMessage("");
 
       const res = await uploadResume(formData);
 
       setMessage(res.message);
-
       setFile(null);
 
-      document.getElementById("resumeInput").value = "";
+      const input = document.getElementById("resumeInput");
+
+      if (input) {
+        input.value = "";
+      }
 
       await loadResume();
     } catch (err) {
@@ -67,19 +150,38 @@ function ResumePage() {
   };
 
   const handleDelete = async () => {
+    const currentUser = getCurrentUser();
+    const userId = currentUser?._id || currentUser?.id;
+
+    if (!userId) {
+      setMessage("Please login again.");
+      return;
+    }
+
     if (!window.confirm("Delete Resume?")) return;
 
     try {
-      const res = await deleteResume(user.id);
+      const res = await deleteResume(userId);
 
       setMessage(res.message);
-
       setResume(null);
     } catch (err) {
       setMessage(
         err.response?.data?.message || "Delete Failed"
       );
     }
+  };
+
+  const handleDownload = () => {
+    const currentUser = getCurrentUser();
+    const userId = currentUser?._id || currentUser?.id;
+
+    if (!userId) {
+      setMessage("Please login again.");
+      return;
+    }
+
+    downloadResume(userId);
   };
 
   return (
@@ -121,7 +223,8 @@ function ResumePage() {
             </h2>
 
             <p>
-              <strong>File:</strong> {resume.originalName}
+              <strong>File:</strong>{" "}
+              {resume.originalName}
             </p>
 
             <p className="mt-2">
@@ -136,9 +239,7 @@ function ResumePage() {
             <div className="flex gap-4 mt-6 flex-wrap">
 
               <button
-                onClick={() =>
-                  downloadResume(user.id)
-                }
+                onClick={handleDownload}
                 className="bg-green-600 text-white px-5 py-2 rounded-lg"
               >
                 Download

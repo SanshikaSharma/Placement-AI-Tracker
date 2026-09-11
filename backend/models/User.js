@@ -45,11 +45,6 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    skills: [
-  {
-    type: String,
-  },
-],
 
     // Personal Details
     phone: {

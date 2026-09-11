@@ -1,9 +1,9 @@
 import api from "./api";
 
-export const checkEligibility = async (
-  studentId,
-  companyId
-) => {
+// ==========================================
+// Check Student Eligibility
+// ==========================================
+export const checkEligibility = async (studentId, companyId) => {
   const res = await api.get(
     `/eligibility/${studentId}/${companyId}`
   );

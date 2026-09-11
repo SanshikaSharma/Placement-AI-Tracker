@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   getMyApplications,
   withdrawApplication,
@@ -6,92 +7,221 @@ import {
 
 function MyApplications() {
   const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
+  // =============================
+  // FETCH LOGGED-IN STUDENT APPLICATIONS
+  // =============================
   useEffect(() => {
-    const loadApplications = async () => {
+    const fetchApplications = async () => {
       try {
-       const user = JSON.parse(localStorage.getItem("user"));
+        // Get current logged-in student
+        // IMPORTANT: use sessionStorage
+        const storedUser =
+          sessionStorage.getItem("user");
 
-if (!user?.id) {
-  alert("Please login first");
-  return;
-}
+        if (!storedUser) {
+          alert("Please login first");
+          setLoading(false);
+          return;
+        }
 
-const res = await getMyApplications(user.id);
+        const user =
+          JSON.parse(storedUser);
 
-        setApplications(res.applications || []);
+        const studentId =
+          user?._id || user?.id;
+
+        if (!studentId) {
+          alert("Student ID not found. Please login again.");
+          setLoading(false);
+          return;
+        }
+
+        console.log(
+          "Logged-in Student ID:",
+          studentId
+        );
+
+        // Fetch ONLY this student's applications
+        const res =
+          await getMyApplications(
+            studentId
+          );
+
+        console.log(
+          "My Applications:",
+          res
+        );
+
+        setApplications(
+          res.applications || []
+        );
       } catch (err) {
-        console.error(err);
+        console.error(
+          "Fetch Applications Error:",
+          err
+        );
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadApplications();
+    fetchApplications();
   }, []);
 
+  // =============================
+  // WITHDRAW APPLICATION
+  // =============================
   const handleWithdraw = async (id) => {
-    const confirmWithdraw = window.confirm(
-      "Withdraw this application?"
-    );
-
-    if (!confirmWithdraw) return;
+    if (
+      !window.confirm(
+        "Withdraw this application?"
+      )
+    ) {
+      return;
+    }
 
     try {
       await withdrawApplication(id);
 
       setApplications((prev) =>
-        prev.filter((app) => app._id !== id)
+        prev.filter(
+          (app) => app._id !== id
+        )
       );
 
-      alert("Application Withdrawn");
+      alert(
+        "Application Withdrawn Successfully"
+      );
     } catch (err) {
-      console.error(err);
-      alert("Unable to Withdraw");
+      console.error(
+        "Withdraw Error:",
+        err
+      );
+
+      alert(
+        "Unable to Withdraw"
+      );
     }
   };
 
+  // =============================
+  // SEARCH APPLICATIONS
+  // =============================
+  const filteredApplications =
+    applications.filter((app) =>
+      app.company?.companyName
+        ?.toLowerCase()
+        .includes(
+          search.toLowerCase()
+        )
+    );
+
+  // =============================
+  // LOADING
+  // =============================
+  if (loading) {
+    return (
+      <div className="p-10 text-2xl font-bold">
+        Loading Applications...
+      </div>
+    );
+  }
+
+  // =============================
+  // PAGE
+  // =============================
   return (
     <div className="p-8">
 
-      <h1 className="text-3xl font-bold mb-8">
+      <h1 className="text-4xl font-bold mb-6">
         My Applications
       </h1>
 
-      {applications.length === 0 ? (
-        <div className="bg-white rounded-xl shadow p-8 text-center">
+      <input
+        type="text"
+        placeholder="Search Company..."
+        value={search}
+        onChange={(e) =>
+          setSearch(e.target.value)
+        }
+        className="border p-3 rounded-lg w-full mb-8"
+      />
+
+      {filteredApplications.length ===
+      0 ? (
+        <div className="bg-white shadow rounded-xl p-8 text-center">
           No Applications Found
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="grid md:grid-cols-2 gap-6">
 
-          {applications.map((app) => (
-            <div
-              key={app._id}
-              className="bg-white rounded-xl shadow p-6 flex justify-between items-center"
-            >
-              <div>
-                <h2 className="text-xl font-bold">
-                  {app.company?.companyName}
+          {filteredApplications.map(
+            (app) => (
+              <div
+                key={app._id}
+                className="bg-white shadow rounded-xl p-6"
+              >
+
+                <h2 className="text-2xl font-bold">
+                  {
+                    app.company
+                      ?.companyName
+                  }
                 </h2>
 
-                <p>{app.company?.role}</p>
-
-                <p className="text-gray-500">
-                  {app.company?.location}
+                <p>
+                  <strong>
+                    Role:
+                  </strong>{" "}
+                  {
+                    app.company?.role
+                  }
                 </p>
 
-                <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
-                  {app.status}
-                </span>
-              </div>
+                <p>
+                  <strong>
+                    Location:
+                  </strong>{" "}
+                  {
+                    app.company
+                      ?.location
+                  }
+                </p>
 
-              <button
-                onClick={() => handleWithdraw(app._id)}
-                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
-              >
-                Withdraw
-              </button>
-            </div>
-          ))}
+                <p>
+                  <strong>
+                    Package:
+                  </strong>{" "}
+                  {
+                    app.company
+                      ?.package
+                  }
+                </p>
+
+                <p>
+                  <strong>
+                    Status:
+                  </strong>{" "}
+                  {app.status}
+                </p>
+
+                <button
+                  onClick={() =>
+                    handleWithdraw(
+                      app._id
+                    )
+                  }
+                  className="mt-5 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
+                >
+                  Withdraw
+                </button>
+
+              </div>
+            )
+          )}
 
         </div>
       )}

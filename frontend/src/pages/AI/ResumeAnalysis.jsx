@@ -1,78 +1,173 @@
 import { useEffect, useState } from "react";
-import ATSCard from "../../components/ai/ATSCard";
-import SkillsCard from "../../components/ai/SkillsCard";
-import SuggestionsCard from "../../components/ai/SuggestionsCard";
-import { analyzeResume } from "../../services/aiService";
+import api from "../../services/api";
+
+import ResumeScoreCard from "../../components/ai/ResumeScoreCard";
+import AnalysisSection from "../../components/ai/AnalysisSection";
 
 function ResumeAnalysis() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchAnalysis = async () => {
+    let ignore = false;
+
+    const loadAnalysis = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem("user"));
+        // Current logged-in student
+        const storedUser = sessionStorage.getItem("user");
 
-        if (!user?.id) return;
+        if (!storedUser) {
+          if (!ignore) {
+            setError("User session not found. Please login again.");
+            setLoading(false);
+          }
+          return;
+        }
 
-        const res = await analyzeResume(user.id);
+        const user = JSON.parse(storedUser);
 
-        if (res.success) {
-          setAnalysis(res.analysis);
+        console.log("Current Logged-in User:", user);
+
+        const userId = user?._id || user?.id;
+
+        if (!userId) {
+          if (!ignore) {
+            setError("User ID not found. Please login again.");
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log("Analyzing Resume For User ID:", userId);
+
+        const res = await api.get(`/ai/analyze/${userId}`);
+
+        console.log("AI API Response:", res.data);
+
+        if (!ignore) {
+          if (res.data.success) {
+            setAnalysis(res.data.analysis);
+          } else {
+            setError(res.data.message || "Analysis failed.");
+          }
         }
       } catch (err) {
-        console.error(err);
+        console.error("Resume Analysis Error:", err);
+
+        if (!ignore) {
+          setError(
+            err.response?.data?.message ||
+              "Unable to analyze resume."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchAnalysis();
+    loadAnalysis();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   if (loading) {
     return (
-      <div className="p-10 text-center text-xl">
+      <div className="p-10 text-2xl font-bold">
         Analyzing Resume...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-10">
+        <h2 className="text-2xl font-bold text-red-600">
+          {error}
+        </h2>
       </div>
     );
   }
 
   if (!analysis) {
     return (
-      <div className="p-10 text-center">
-        No analysis available.
+      <div className="p-10 text-xl">
+        No Resume Analysis Available
       </div>
     );
   }
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
+    <div className="p-8">
 
       <h1 className="text-4xl font-bold mb-8">
         AI Resume Analysis
       </h1>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 
-        <ATSCard score={analysis.atsScore} />
-
-        <SuggestionsCard
-          suggestions={analysis.suggestions}
+        <ResumeScoreCard
+          title="Resume Score"
+          value={`${analysis.resumeScore}%`}
+          color="text-green-600"
         />
 
-        <SkillsCard
-          title="Skills Found"
-          skills={analysis.foundSkills}
-          color="bg-green-600"
+        <ResumeScoreCard
+          title="ATS Score"
+          value={`${analysis.atsScore}%`}
+          color="text-blue-600"
         />
 
-        <SkillsCard
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <AnalysisSection
+          title="Strengths"
+          items={analysis.strengths || []}
+          color="text-green-600"
+        />
+
+        <AnalysisSection
+          title="Weaknesses"
+          items={analysis.weaknesses || []}
+          color="text-red-600"
+        />
+
+        <AnalysisSection
+          title="Found Skills"
+          items={analysis.foundSkills || []}
+          color="text-blue-600"
+        />
+
+        <AnalysisSection
           title="Missing Skills"
-          skills={analysis.missingSkills}
-          color="bg-red-600"
+          items={analysis.missingSkills || []}
+          color="text-orange-600"
         />
-      
+
+        <AnalysisSection
+          title="Suggestions"
+          items={analysis.suggestions || []}
+          color="text-purple-600"
+        />
+
+      </div>
+
+      <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
+
+        <h2 className="text-2xl font-bold mb-4">
+          Final Recommendation
+        </h2>
+
+        <p className="text-lg">
+          {analysis.recommendation}
+        </p>
+
       </div>
 
     </div>

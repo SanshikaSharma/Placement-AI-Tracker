@@ -6,6 +6,7 @@ const {
   getDashboard,
 } = require("../controllers/dashboardController");
 
-router.get("/", getDashboard);
+// Student dashboard
+router.get("/:studentId", getDashboard);
 
 module.exports = router;

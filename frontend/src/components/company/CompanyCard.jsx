@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { deleteCompany } from "../../services/companyService";
-import { applyToCompany } from "../../services/companyService";
+import { applyToCompany } from "../../services/applicationService";
 
 function CompanyCard({ company }) {
   const handleDelete = async () => {
@@ -18,25 +18,77 @@ function CompanyCard({ company }) {
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Unable to Delete Company");
+
+      alert(
+        err.response?.data?.message ||
+          "Unable to Delete Company"
+      );
     }
   };
+
   const handleApply = async () => {
   try {
-    const res = await applyToCompany(company._id);
+    const storedUser = localStorage.getItem("user");
 
-    alert(res.message);
+    if (!storedUser) {
+      alert("Please login first.");
+      return;
+    }
 
-  } catch (err) {
-    console.error(err);
+    const user = JSON.parse(storedUser);
+
+    console.log("===== APPLY BUTTON =====");
+    console.log("Logged-in User:", user);
+
+    const studentId =
+      user._id ||
+      user.id ||
+      user.userId;
+
+    const companyId = company?._id;
+
+    console.log("Student ID:", studentId);
+    console.log("Company ID:", companyId);
+
+    if (!studentId) {
+      alert(
+        "Student ID not found. Please logout and login again."
+      );
+      return;
+    }
+
+    if (!companyId) {
+      alert("Company ID not found.");
+      return;
+    }
+
+    const res = await applyToCompany({
+      companyId,
+      studentId,
+    });
+
+    console.log(
+      "Application Response:",
+      res
+    );
 
     alert(
-      err.response?.data?.message ||
-      err.message ||
-      "Application Failed"
+      res.message ||
+        "Application submitted successfully."
+    );
+  } catch (error) {
+    console.error(
+      "Apply Error:",
+      error
+    );
+
+    alert(
+      error.response?.data?.message ||
+        "Application failed."
     );
   }
 };
+
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition">
 
@@ -49,7 +101,6 @@ function CompanyCard({ company }) {
       </p>
 
       <div className="mt-5 space-y-2">
-
         <p>
           <strong>Package:</strong> {company.package}
         </p>
@@ -59,40 +110,36 @@ function CompanyCard({ company }) {
         </p>
 
         <p>
-          <strong>CGPA:</strong> {company.minimumCGPA}
+          <strong>Minimum CGPA:</strong> {company.minimumCGPA}
         </p>
 
         <p>
           <strong>Status:</strong> {company.status}
         </p>
-
       </div>
 
-     <div className="flex gap-3 mt-6">
+      <div className="flex gap-3 mt-6">
+        <button
+          onClick={handleApply}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
+        >
+          Apply Now
+        </button>
 
-  <button
-    onClick={handleApply}
-    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
-  >
-    Apply Now
-  </button>
+        <Link
+          to={`/companies/edit/${company._id}`}
+          className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white text-center py-2 rounded-lg"
+        >
+          Edit
+        </Link>
 
-  <Link
-    to={`/companies/edit/${company._id}`}
-    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white text-center py-2 rounded-lg"
-  >
-    Edit
-  </Link>
-
-  <button
-    onClick={handleDelete}
-    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
-  >
-    Delete
-  </button>
-
-</div>
-
+        <button
+          onClick={handleDelete}
+          className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg"
+        >
+          Delete
+        </button>
+      </div>
     </div>
   );
 }
