@@ -16,8 +16,6 @@ function MyApplications() {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        // Get current logged-in student
-        // IMPORTANT: use sessionStorage
         const storedUser =
           sessionStorage.getItem("user");
 
@@ -27,14 +25,15 @@ function MyApplications() {
           return;
         }
 
-        const user =
-          JSON.parse(storedUser);
+        const user = JSON.parse(storedUser);
 
         const studentId =
           user?._id || user?.id;
 
         if (!studentId) {
-          alert("Student ID not found. Please login again.");
+          alert(
+            "Student ID not found. Please login again."
+          );
           setLoading(false);
           return;
         }
@@ -44,11 +43,8 @@ function MyApplications() {
           studentId
         );
 
-        // Fetch ONLY this student's applications
         const res =
-          await getMyApplications(
-            studentId
-          );
+          await getMyApplications(studentId);
 
         console.log(
           "My Applications:",
@@ -56,13 +52,17 @@ function MyApplications() {
         );
 
         setApplications(
-          res.applications || []
+          Array.isArray(res?.applications)
+            ? res.applications
+            : []
         );
       } catch (err) {
         console.error(
           "Fetch Applications Error:",
           err
         );
+
+        setApplications([]);
       } finally {
         setLoading(false);
       }
@@ -111,13 +111,53 @@ function MyApplications() {
   // SEARCH APPLICATIONS
   // =============================
   const filteredApplications =
-    applications.filter((app) =>
-      app.company?.companyName
-        ?.toLowerCase()
-        .includes(
-          search.toLowerCase()
-        )
-    );
+    applications.filter((app) => {
+      const company =
+        app?.company || {};
+
+      const searchText =
+        search.toLowerCase().trim();
+
+      if (!searchText) {
+        return true;
+      }
+
+      const companyName =
+        company?.companyName ||
+        company?.name ||
+        company?.title ||
+        "";
+
+      const location =
+        company?.location || "";
+
+      const packageValue =
+        company?.package || "";
+
+      const eligibility =
+        company?.eligibility || "";
+
+      const status =
+        app?.status || "";
+
+      return (
+        companyName
+          .toLowerCase()
+          .includes(searchText) ||
+        location
+          .toLowerCase()
+          .includes(searchText) ||
+        packageValue
+          .toLowerCase()
+          .includes(searchText) ||
+        eligibility
+          .toLowerCase()
+          .includes(searchText) ||
+        status
+          .toLowerCase()
+          .includes(searchText)
+      );
+    });
 
   // =============================
   // LOADING
@@ -150,8 +190,7 @@ function MyApplications() {
         className="border p-3 rounded-lg w-full mb-8"
       />
 
-      {filteredApplications.length ===
-      0 ? (
+      {filteredApplications.length === 0 ? (
         <div className="bg-white shadow rounded-xl p-8 text-center">
           No Applications Found
         </div>
@@ -159,68 +198,90 @@ function MyApplications() {
         <div className="grid md:grid-cols-2 gap-6">
 
           {filteredApplications.map(
-            (app) => (
-              <div
-                key={app._id}
-                className="bg-white shadow rounded-xl p-6"
-              >
+            (app) => {
+              const company =
+                app?.company || {};
 
-                <h2 className="text-2xl font-bold">
-                  {
-                    app.company
-                      ?.companyName
-                  }
-                </h2>
+              const companyName =
+                company?.companyName ||
+                company?.name ||
+                company?.title ||
+                "Company";
 
-                <p>
-                  <strong>
-                    Role:
-                  </strong>{" "}
-                  {
-                    app.company?.role
-                  }
-                </p>
-
-                <p>
-                  <strong>
-                    Location:
-                  </strong>{" "}
-                  {
-                    app.company
-                      ?.location
-                  }
-                </p>
-
-                <p>
-                  <strong>
-                    Package:
-                  </strong>{" "}
-                  {
-                    app.company
-                      ?.package
-                  }
-                </p>
-
-                <p>
-                  <strong>
-                    Status:
-                  </strong>{" "}
-                  {app.status}
-                </p>
-
-                <button
-                  onClick={() =>
-                    handleWithdraw(
-                      app._id
-                    )
-                  }
-                  className="mt-5 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
+              return (
+                <div
+                  key={app._id}
+                  className="bg-white shadow rounded-xl p-6"
                 >
-                  Withdraw
-                </button>
 
-              </div>
-            )
+                  {/* COMPANY */}
+                  <h2 className="text-2xl font-bold mb-4">
+                    {companyName}
+                  </h2>
+
+                  {/* LOCATION */}
+                  <p className="mb-2">
+                    <strong>
+                      Location:
+                    </strong>{" "}
+                    {company?.location ||
+                      "Not specified"}
+                  </p>
+
+                  {/* PACKAGE */}
+                  <p className="mb-2">
+                    <strong>
+                      Package:
+                    </strong>{" "}
+                    {company?.package ||
+                      "Not specified"}
+                  </p>
+
+                  {/* ELIGIBILITY */}
+                  <p className="mb-2">
+                    <strong>
+                      Eligibility:
+                    </strong>{" "}
+                    {company?.eligibility ||
+                      "Not specified"}
+                  </p>
+
+                  {/* APPLICATION STATUS */}
+                  <p className="mb-2">
+                    <strong>
+                      Status:
+                    </strong>{" "}
+                    {app?.status ||
+                      "Applied"}
+                  </p>
+
+                  {/* APPLICATION DATE */}
+                  <p className="mb-4">
+                    <strong>
+                      Applied On:
+                    </strong>{" "}
+                    {app?.appliedAt
+                      ? new Date(
+                          app.appliedAt
+                        ).toLocaleDateString()
+                      : "Not available"}
+                  </p>
+
+                  {/* WITHDRAW */}
+                  <button
+                    onClick={() =>
+                      handleWithdraw(
+                        app._id
+                      )
+                    }
+                    className="mt-3 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
+                  >
+                    Withdraw
+                  </button>
+
+                </div>
+              );
+            }
           )}
 
         </div>

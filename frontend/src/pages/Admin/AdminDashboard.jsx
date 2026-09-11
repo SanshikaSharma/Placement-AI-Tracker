@@ -438,12 +438,16 @@ function AdminDashboard() {
                         </td>
 
                         <td className="p-3 text-gray-700">
-                          {application.company?.companyName ||
-                            "-"}
+                          {application.company?.name ||
+  application.company?.companyName ||
+  "-"}
                         </td>
 
                         <td className="p-3 text-gray-600">
-                          {application.company?.role || "-"}
+                          {application.company?.role ||
+  application.company?.jobRole ||
+  application.company?.position ||
+  "-"}
                         </td>
 
                         <td className="p-3">
@@ -554,11 +558,16 @@ function AdminDashboard() {
                       >
 
                         <td className="p-3 font-semibold text-gray-800">
-                          {company.companyName || "-"}
+                          {company.name ||
+  company.companyName ||
+  "-"}
                         </td>
 
                         <td className="p-3 text-gray-600">
-                          {company.role || "-"}
+                          {company.role ||
+  company.jobRole ||
+  company.position ||
+  "-"}
                         </td>
 
                         <td className="p-3">

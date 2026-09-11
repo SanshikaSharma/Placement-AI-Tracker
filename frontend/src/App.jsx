@@ -286,11 +286,24 @@ function App() {
 />
 <Route
   path="/notifications"
-  element={<NotificationsPage />}
+  element={
+    <ProtectedRoute>
+      <Layout>
+        <NotificationsPage />
+      </Layout>
+    </ProtectedRoute>
+  }
 />
+
 <Route
   path="/ai-interview"
-  element={<AIInterviewPage />}
+  element={
+    <ProtectedRoute>
+      <Layout>
+        <AIInterviewPage />
+      </Layout>
+    </ProtectedRoute>
+  }
 />
 <Route
   path="/career-analytics"
