@@ -10,23 +10,61 @@ const {
   deleteCompany,
 } = require("../controllers/companyController");
 
-// ==========================
-// Company CRUD Routes
-// ==========================
+const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
 
-// Add Company
-router.post("/", addCompany);
+// ======================================
+// COMPANY ROUTES
+// ======================================
 
-// Get All Companies
-router.get("/", getCompanies);
+// --------------------------------------
+// STUDENT + ADMIN
+// View companies
+// --------------------------------------
+router.get(
+  "/",
+  authMiddleware,
+  getCompanies
+);
 
-// Get Company By ID
-router.get("/:id", getCompanyById);
+// --------------------------------------
+// STUDENT + ADMIN
+// View single company
+// --------------------------------------
+router.get(
+  "/:id",
+  authMiddleware,
+  getCompanyById
+);
 
-// Update Company
-router.put("/:id", updateCompany);
+// --------------------------------------
+// ADMIN ONLY
+// Add company
+// --------------------------------------
+router.post(
+  "/",
+  adminMiddleware,
+  addCompany
+);
 
-// Delete Company
-router.delete("/:id", deleteCompany);
+// --------------------------------------
+// ADMIN ONLY
+// Update company
+// --------------------------------------
+router.put(
+  "/:id",
+  adminMiddleware,
+  updateCompany
+);
+
+// --------------------------------------
+// ADMIN ONLY
+// Delete company
+// --------------------------------------
+router.delete(
+  "/:id",
+  adminMiddleware,
+  deleteCompany
+);
 
 module.exports = router;

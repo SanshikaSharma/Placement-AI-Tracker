@@ -19,34 +19,14 @@ const categories = [
 
 const difficulties = ["Easy", "Medium", "Hard"];
 
-// Get the MongoDB user ID from different possible login-response structures
-const getStudentId = () => {
-  const storedUser = sessionStorage.getItem("user");
-
-  if (!storedUser) {
-    return null;
-  }
-
-  try {
-    const parsedUser = JSON.parse(storedUser);
-
-    return (
-      parsedUser?._id ||
-      parsedUser?.id ||
-      parsedUser?.user?._id ||
-      parsedUser?.user?.id ||
-      parsedUser?.student?._id ||
-      parsedUser?.student?.id ||
-      null
-    );
-  } catch (error) {
-    console.error("User parsing error:", error);
-    return null;
-  }
-};
+/* =========================================================
+   GET STORED USER
+========================================================= */
 
 const getStoredUser = () => {
-  const storedUser = sessionStorage.getItem("user");
+  const storedUser =
+    sessionStorage.getItem("user") ||
+    localStorage.getItem("user");
 
   if (!storedUser) {
     return null;
@@ -55,7 +35,6 @@ const getStoredUser = () => {
   try {
     const parsedUser = JSON.parse(storedUser);
 
-    // If login stores { user: {...} }, use the nested user
     if (parsedUser?.user) {
       return parsedUser.user;
     }
@@ -67,37 +46,81 @@ const getStoredUser = () => {
   }
 };
 
+/* =========================================================
+   GET STUDENT ID
+========================================================= */
+
+const getStudentId = () => {
+  const user = getStoredUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    user?._id ||
+    user?.id ||
+    user?.userId ||
+    user?.studentId ||
+    user?.user?._id ||
+    user?.user?.id ||
+    user?.student?._id ||
+    user?.student?.id ||
+    null
+  );
+};
+
+/* =========================================================
+   MAIN COMPONENT
+========================================================= */
+
 const AIInterviewPage = () => {
   const [user] = useState(() => getStoredUser());
 
-  const [studentId] = useState(() => getStudentId());
+  const [studentId] = useState(() =>
+    getStudentId()
+  );
 
-  const [category, setCategory] = useState("Technical");
+  const [category, setCategory] =
+    useState("Technical");
 
-  const [difficulty, setDifficulty] = useState("Easy");
+  const [difficulty, setDifficulty] =
+    useState("Easy");
 
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] =
+    useState("");
 
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] =
+    useState("");
 
-  const [score, setScore] = useState(null);
+  const [score, setScore] =
+    useState(null);
 
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] =
+    useState("");
 
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] =
+    useState([]);
 
-  const [averageScore, setAverageScore] = useState(0);
+  const [averageScore, setAverageScore] =
+    useState(0);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [evaluating, setEvaluating] = useState(false);
+  const [evaluating, setEvaluating] =
+    useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
-  // Load interview history
+  /* =======================================================
+     LOAD HISTORY
+  ======================================================= */
+
   useEffect(() => {
     if (!studentId) {
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -112,8 +135,15 @@ const AIInterviewPage = () => {
         }
 
         if (res?.success) {
-          setHistory(res.interviews || []);
-          setAverageScore(res.averageScore || 0);
+          setHistory(
+            Array.isArray(res.interviews)
+              ? res.interviews
+              : []
+          );
+
+          setAverageScore(
+            Number(res.averageScore) || 0
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -132,15 +162,19 @@ const AIInterviewPage = () => {
     };
   }, [studentId]);
 
-  // Load question
+  /* =======================================================
+     LOAD QUESTION
+  ======================================================= */
+
   const loadQuestion = async () => {
     try {
       setLoading(true);
       setError("");
 
+      setQuestion("");
+      setAnswer("");
       setScore(null);
       setFeedback("");
-      setAnswer("");
 
       const res =
         await getInterviewQuestion(
@@ -148,13 +182,14 @@ const AIInterviewPage = () => {
           difficulty
         );
 
-      if (res?.success && res?.question) {
+      if (
+        res?.success &&
+        res?.question
+      ) {
         setQuestion(
           res.question.question || ""
         );
       } else {
-        setQuestion("");
-
         setError(
           res?.message ||
             "Unable to load interview question."
@@ -166,8 +201,6 @@ const AIInterviewPage = () => {
         err
       );
 
-      setQuestion("");
-
       setError(
         err?.response?.data?.message ||
           "Unable to load interview question."
@@ -177,24 +210,27 @@ const AIInterviewPage = () => {
     }
   };
 
-  // Submit answer
+  /* =======================================================
+     SUBMIT ANSWER
+  ======================================================= */
+
   const handleSubmit = async () => {
     if (!studentId) {
-      alert(
+      setError(
         "Student ID not found. Please logout and login again."
       );
       return;
     }
 
     if (!question) {
-      alert(
+      setError(
         "Please get an interview question first."
       );
       return;
     }
 
     if (!answer.trim()) {
-      alert(
+      setError(
         "Please write your answer first."
       );
       return;
@@ -224,7 +260,7 @@ const AIInterviewPage = () => {
       setScore(
         typeof res.score === "number"
           ? res.score
-          : 0
+          : Number(res.score) || 0
       );
 
       setFeedback(
@@ -232,18 +268,27 @@ const AIInterviewPage = () => {
           "No feedback available."
       );
 
-      // Refresh history
+      /* Refresh history */
+
       try {
         const historyRes =
-          await getInterviewHistory(studentId);
+          await getInterviewHistory(
+            studentId
+          );
 
         if (historyRes?.success) {
           setHistory(
-            historyRes.interviews || []
+            Array.isArray(
+              historyRes.interviews
+            )
+              ? historyRes.interviews
+              : []
           );
 
           setAverageScore(
-            historyRes.averageScore || 0
+            Number(
+              historyRes.averageScore
+            ) || 0
           );
         }
       } catch (historyError) {
@@ -267,18 +312,22 @@ const AIInterviewPage = () => {
     }
   };
 
-  // Delete history
+  /* =======================================================
+     DELETE HISTORY
+  ======================================================= */
+
   const handleResetHistory = async () => {
     if (!studentId) {
-      alert(
+      setError(
         "Student ID not found. Please login again."
       );
       return;
     }
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete your interview history?"
-    );
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete your interview history?"
+      );
 
     if (!confirmed) {
       return;
@@ -299,248 +348,289 @@ const AIInterviewPage = () => {
         err
       );
 
-      alert(
+      setError(
         err?.response?.data?.message ||
           "Unable to delete interview history."
       );
     }
   };
 
+  /* =======================================================
+     SCORE COLOR
+  ======================================================= */
+
+  const getScoreColor = (value) => {
+    if (value >= 80) {
+      return "#16a34a";
+    }
+
+    if (value >= 60) {
+      return "#2563eb";
+    }
+
+    if (value >= 40) {
+      return "#f59e0b";
+    }
+
+    return "#ef4444";
+  };
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
   return (
-    <div
-      style={{
-        padding: "30px",
-        maxWidth: "1100px",
-        margin: "0 auto",
-        boxSizing: "border-box",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          marginBottom: "25px",
-        }}
-      >
-        <h1
-          style={{
-            marginBottom: "8px",
-          }}
-        >
-          🤖 AI Interview Preparation
-        </h1>
+    <div style={styles.page}>
+      <div style={styles.container}>
 
-        <p
-          style={{
-            color: "#666",
-            margin: 0,
-          }}
-        >
-          Practice interview questions and improve
-          your interview preparation.
-        </p>
+        {/* ================= HEADER ================= */}
 
-        {user?.name && (
-          <p
-            style={{
-              marginTop: "10px",
-              color: "#555",
-            }}
-          >
-            Welcome, <strong>{user.name}</strong>
-          </p>
+        <div style={styles.header}>
+          <div>
+            <div style={styles.titleRow}>
+              <div style={styles.robotIcon}>
+                🤖
+              </div>
+
+              <div>
+                <h1 style={styles.title}>
+                  AI Interview Preparation
+                </h1>
+
+                <p style={styles.subtitle}>
+                  Practice real interview questions,
+                  evaluate your answers and improve
+                  your confidence.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {user?.name && (
+            <div style={styles.welcomeCard}>
+              <div style={styles.welcomeIcon}>
+                👋
+              </div>
+
+              <div>
+                <span style={styles.welcomeSmall}>
+                  Welcome back
+                </span>
+
+                <strong style={styles.welcomeName}>
+                  {user.name}
+                </strong>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ================= LOGIN WARNING ================= */}
+
+        {!studentId && (
+          <div style={styles.warning}>
+            <span style={styles.alertIcon}>
+              ⚠️
+            </span>
+
+            <div>
+              <strong>
+                Login session not found
+              </strong>
+
+              <p style={styles.alertText}>
+                Please logout and login again
+                before using AI Interview.
+              </p>
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* Login warning */}
-      {!studentId && (
-        <div
-          style={{
-            padding: "15px",
-            marginBottom: "20px",
-            background: "#fff3cd",
-            color: "#856404",
-            borderRadius: "10px",
-            border: "1px solid #ffeeba",
-          }}
-        >
-          Your login session could not be
-          identified. Please logout and login again.
-        </div>
-      )}
+        {/* ================= ERROR ================= */}
 
-      {/* Error */}
-      {error && (
-        <div
-          style={{
-            padding: "14px",
-            marginBottom: "20px",
-            background: "#ffe5e5",
-            color: "#b00020",
-            borderRadius: "10px",
-            border: "1px solid #ffcccc",
-          }}
-        >
-          {error}
-        </div>
-      )}
+        {error && (
+          <div style={styles.error}>
+            <span>⚠️</span>
 
-      {/* Statistics */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "15px",
-          marginBottom: "25px",
-        }}
-      >
-        <div
-          style={{
-            padding: "20px",
-            borderRadius: "12px",
-            background: "#f5f7ff",
-            border: "1px solid #e2e6ff",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 8px",
-              color: "#666",
-            }}
-          >
-            Total Attempts
-          </p>
+            <span>{error}</span>
 
-          <h2 style={{ margin: 0 }}>
-            {history.length}
-          </h2>
-        </div>
+            <button
+              type="button"
+              onClick={() => setError("")}
+              style={styles.closeError}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
-        <div
-          style={{
-            padding: "20px",
-            borderRadius: "12px",
-            background: "#f5f7ff",
-            border: "1px solid #e2e6ff",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 8px",
-              color: "#666",
-            }}
-          >
-            Average Score
-          </p>
+        {/* ================= STATS ================= */}
 
-          <h2 style={{ margin: 0 }}>
-            {averageScore}/100
-          </h2>
-        </div>
-      </div>
+        <div style={styles.statsGrid}>
 
-      {/* Controls */}
-      <div
-        style={{
-          padding: "25px",
-          border: "1px solid #ddd",
-          borderRadius: "12px",
-          marginBottom: "20px",
-          background: "#fff",
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>
-          Start Interview Practice
-        </h2>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "20px",
-            flexWrap: "wrap",
-            marginTop: "20px",
-          }}
-        >
-          <div>
-            <label
-              htmlFor="interview-category"
+          <div style={styles.statCard}>
+            <div
               style={{
-                fontWeight: "600",
+                ...styles.statIcon,
+                background:
+                  "#eef2ff",
               }}
             >
-              Category
-            </label>
+              📝
+            </div>
 
-            <br />
+            <div>
+              <span style={styles.statLabel}>
+                Total Attempts
+              </span>
 
-            <select
-              id="interview-category"
-              value={category}
-              onChange={(e) =>
-                setCategory(e.target.value)
-              }
-              style={{
-                padding: "10px",
-                marginTop: "7px",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-                minWidth: "190px",
-              }}
-            >
-              {categories.map((item) => (
-                <option
-                  key={item}
-                  value={item}
-                >
-                  {item}
-                </option>
-              ))}
-            </select>
+              <strong style={styles.statValue}>
+                {history.length}
+              </strong>
+            </div>
           </div>
 
-          <div>
-            <label
-              htmlFor="interview-difficulty"
+          <div style={styles.statCard}>
+            <div
               style={{
-                fontWeight: "600",
+                ...styles.statIcon,
+                background:
+                  "#ecfdf5",
               }}
             >
-              Difficulty
-            </label>
+              🎯
+            </div>
 
-            <br />
+            <div>
+              <span style={styles.statLabel}>
+                Average Score
+              </span>
 
-            <select
-              id="interview-difficulty"
-              value={difficulty}
-              onChange={(e) =>
-                setDifficulty(e.target.value)
-              }
-              style={{
-                padding: "10px",
-                marginTop: "7px",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-                minWidth: "150px",
-              }}
-            >
-              {difficulties.map((item) => (
-                <option
-                  key={item}
-                  value={item}
-                >
-                  {item}
-                </option>
-              ))}
-            </select>
+              <strong style={styles.statValue}>
+                {averageScore}/100
+              </strong>
+            </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-end",
-            }}
-          >
+          <div style={styles.statCard}>
+            <div
+              style={{
+                ...styles.statIcon,
+                background:
+                  "#fff7ed",
+              }}
+            >
+              🏆
+            </div>
+
+            <div>
+              <span style={styles.statLabel}>
+                Best Score
+              </span>
+
+              <strong style={styles.statValue}>
+                {history.length > 0
+                  ? Math.max(
+                      ...history.map(
+                        (item) =>
+                          Number(
+                            item.score
+                          ) || 0
+                      )
+                    )
+                  : 0}
+                /100
+              </strong>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ================= PRACTICE CARD ================= */}
+
+        <section style={styles.practiceCard}>
+
+          <div style={styles.sectionHeader}>
+            <div>
+              <span style={styles.sectionBadge}>
+                🎯 PRACTICE MODE
+              </span>
+
+              <h2 style={styles.sectionTitle}>
+                Start Interview Practice
+              </h2>
+
+              <p style={styles.sectionDescription}>
+                Choose a category and difficulty
+                to generate your next question.
+              </p>
+            </div>
+          </div>
+
+          <div style={styles.controls}>
+
+            <div style={styles.controlGroup}>
+              <label
+                htmlFor="interview-category"
+                style={styles.label}
+              >
+                Category
+              </label>
+
+              <select
+                id="interview-category"
+                value={category}
+                onChange={(e) =>
+                  setCategory(
+                    e.target.value
+                  )
+                }
+                style={styles.select}
+              >
+                {categories.map(
+                  (item) => (
+                    <option
+                      key={item}
+                      value={item}
+                    >
+                      {item}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div style={styles.controlGroup}>
+              <label
+                htmlFor="interview-difficulty"
+                style={styles.label}
+              >
+                Difficulty
+              </label>
+
+              <select
+                id="interview-difficulty"
+                value={difficulty}
+                onChange={(e) =>
+                  setDifficulty(
+                    e.target.value
+                  )
+                }
+                style={styles.select}
+              >
+                {difficulties.map(
+                  (item) => (
+                    <option
+                      key={item}
+                      value={item}
+                    >
+                      {item}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
             <button
               type="button"
               onClick={loadQuestion}
@@ -548,296 +638,946 @@ const AIInterviewPage = () => {
                 loading || !studentId
               }
               style={{
-                padding: "11px 20px",
-                border: "none",
-                borderRadius: "8px",
-                cursor:
-                  loading || !studentId
-                    ? "not-allowed"
-                    : "pointer",
-                background: "#222",
-                color: "#fff",
+                ...styles.primaryButton,
+                opacity:
+                  loading ||
+                  !studentId
+                    ? 0.6
+                    : 1,
               }}
             >
               {loading
-                ? "Loading..."
+                ? "⏳ Loading..."
                 : "🎯 Get Question"}
             </button>
+
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Question */}
-      {question && (
-        <div
-          style={{
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid #ddd",
-            marginBottom: "20px",
-            background: "#fff",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-              marginBottom: "15px",
-            }}
-          >
-            <span
-              style={{
-                padding: "5px 10px",
-                borderRadius: "20px",
-                background: "#eef2ff",
-                fontSize: "13px",
-              }}
-            >
-              {category}
-            </span>
+        {/* ================= QUESTION ================= */}
 
-            <span
-              style={{
-                padding: "5px 10px",
-                borderRadius: "20px",
-                background: "#f3f3f3",
-                fontSize: "13px",
-              }}
-            >
-              {difficulty}
-            </span>
-          </div>
+        {question && (
+          <section style={styles.questionCard}>
 
-          <h2
-            style={{
-              lineHeight: "1.5",
-            }}
-          >
-            {question}
-          </h2>
+            <div style={styles.questionTop}>
+              <div>
+                <span style={styles.questionNumber}>
+                  INTERVIEW QUESTION
+                </span>
 
-          <textarea
-            value={answer}
-            onChange={(e) =>
-              setAnswer(e.target.value)
-            }
-            placeholder="Type your interview answer here..."
-            rows={8}
-            style={{
-              width: "100%",
-              marginTop: "15px",
-              padding: "15px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-              resize: "vertical",
-              boxSizing: "border-box",
-              fontFamily: "inherit",
-              fontSize: "15px",
-            }}
-          />
+                <div style={styles.badges}>
+                  <span style={styles.categoryBadge}>
+                    {category}
+                  </span>
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={
-              evaluating || !studentId
-            }
-            style={{
-              marginTop: "15px",
-              padding: "12px 25px",
-              border: "none",
-              borderRadius: "8px",
-              cursor:
-                evaluating || !studentId
-                  ? "not-allowed"
-                  : "pointer",
-              background: "#222",
-              color: "#fff",
-            }}
-          >
-            {evaluating
-              ? "Evaluating..."
-              : "🤖 Evaluate My Answer"}
-          </button>
-        </div>
-      )}
+                  <span
+                    style={{
+                      ...styles.difficultyBadge,
+                      ...(difficulty ===
+                      "Hard"
+                        ? styles.hardBadge
+                        : difficulty ===
+                          "Medium"
+                        ? styles.mediumBadge
+                        : styles.easyBadge),
+                    }}
+                  >
+                    {difficulty}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-      {/* Result */}
-      {score !== null && (
-        <div
-          style={{
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid #ddd",
-            marginBottom: "25px",
-            background: "#fff",
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>
-            📊 Interview Result
-          </h2>
+            <div style={styles.questionBox}>
+              <span style={styles.questionMark}>
+                Q
+              </span>
 
-          <div
-            style={{
-              fontSize: "42px",
-              fontWeight: "700",
-              margin: "15px 0",
-            }}
-          >
-            {score}/100
-          </div>
+              <h2 style={styles.questionText}>
+                {question}
+              </h2>
+            </div>
 
-          <p>
-            <strong>Feedback:</strong>
-          </p>
-
-          <p
-            style={{
-              lineHeight: "1.6",
-              color: "#555",
-            }}
-          >
-            {feedback}
-          </p>
-
-          <button
-            type="button"
-            onClick={loadQuestion}
-            disabled={loading}
-            style={{
-              padding: "10px 20px",
-              marginTop: "10px",
-              border: "none",
-              borderRadius: "8px",
-              cursor: loading
-                ? "not-allowed"
-                : "pointer",
-              background: "#222",
-              color: "#fff",
-            }}
-          >
-            🔄 Next Question
-          </button>
-        </div>
-      )}
-
-      {/* History */}
-      <div
-        style={{
-          padding: "25px",
-          borderRadius: "12px",
-          border: "1px solid #ddd",
-          background: "#fff",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "15px",
-            flexWrap: "wrap",
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>
-            📚 Interview History
-          </h2>
-
-          {history.length > 0 && (
-            <button
-              type="button"
-              onClick={handleResetHistory}
-              style={{
-                padding: "9px 15px",
-                borderRadius: "8px",
-                border: "1px solid #ccc",
-                background: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              Clear History
-            </button>
-          )}
-        </div>
-
-        {history.length === 0 ? (
-          <p style={{ color: "#666" }}>
-            No interview attempts yet.
-          </p>
-        ) : (
-          history.map((item) => (
-            <div
-              key={item._id}
-              style={{
-                padding: "18px 0",
-                borderBottom:
-                  "1px solid #eee",
-              }}
-            >
-              <div
-                style={{
-                  marginBottom: "8px",
-                }}
+            <div style={styles.answerSection}>
+              <label
+                htmlFor="interview-answer"
+                style={styles.answerLabel}
               >
-                <strong>
-                  {item.category}
-                </strong>
+                Your Answer
+              </label>
 
-                <span
+              <textarea
+                id="interview-answer"
+                value={answer}
+                onChange={(e) =>
+                  setAnswer(
+                    e.target.value
+                  )
+                }
+                placeholder="Write your answer as if you are speaking to an interviewer..."
+                rows={8}
+                style={styles.textarea}
+              />
+
+              <div style={styles.answerFooter}>
+                <span style={styles.characterCount}>
+                  {answer.length} characters
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={
+                    evaluating ||
+                    !studentId
+                  }
                   style={{
-                    color: "#666",
+                    ...styles.evaluateButton,
+                    opacity:
+                      evaluating ||
+                      !studentId
+                        ? 0.6
+                        : 1,
                   }}
                 >
-                  {" "}
-                  • {item.difficulty}
+                  {evaluating
+                    ? "🤖 Evaluating..."
+                    : "🤖 Evaluate My Answer"}
+                </button>
+              </div>
+            </div>
+
+          </section>
+        )}
+
+        {/* ================= RESULT ================= */}
+
+        {score !== null && (
+          <section
+            style={{
+              ...styles.resultCard,
+              borderTop: `5px solid ${getScoreColor(
+                score
+              )}`,
+            }}
+          >
+
+            <div style={styles.resultHeader}>
+              <div>
+                <span style={styles.sectionBadge}>
+                  📊 AI EVALUATION
                 </span>
+
+                <h2 style={styles.sectionTitle}>
+                  Interview Result
+                </h2>
               </div>
 
-              <p
+              <div
                 style={{
-                  fontWeight: "600",
-                  lineHeight: "1.5",
+                  ...styles.scoreCircle,
+                  borderColor:
+                    getScoreColor(
+                      score
+                    ),
                 }}
               >
-                {item.question}
-              </p>
-
-              <p
-                style={{
-                  color: "#555",
-                  lineHeight: "1.5",
-                }}
-              >
-                <strong>
-                  Your Answer:
-                </strong>{" "}
-                {item.answer}
-              </p>
-
-              <p>
-                <strong>
-                  Score: {item.score}/100
+                <strong
+                  style={{
+                    color:
+                      getScoreColor(
+                        score
+                      ),
+                  }}
+                >
+                  {score}
                 </strong>
-              </p>
 
-              <p
+                <span>/100</span>
+              </div>
+            </div>
+
+            <div style={styles.resultProgress}>
+              <div
                 style={{
-                  color: "#555",
-                  lineHeight: "1.5",
+                  ...styles.resultProgressFill,
+                  width: `${Math.min(
+                    100,
+                    Math.max(0, score)
+                  )}%`,
+                  background:
+                    getScoreColor(
+                      score
+                    ),
                 }}
-              >
-                <strong>
-                  Feedback:
-                </strong>{" "}
-                {item.feedback}
+              />
+            </div>
+
+            <div style={styles.feedbackBox}>
+              <div style={styles.feedbackIcon}>
+                💡
+              </div>
+
+              <div>
+                <strong style={styles.feedbackTitle}>
+                  AI Feedback
+                </strong>
+
+                <p style={styles.feedbackText}>
+                  {feedback}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadQuestion}
+              disabled={loading}
+              style={styles.nextButton}
+            >
+              {loading
+                ? "Loading..."
+                : "🔄 Next Question"}
+            </button>
+
+          </section>
+        )}
+
+        {/* ================= HISTORY ================= */}
+
+        <section style={styles.historyCard}>
+
+          <div style={styles.historyHeader}>
+            <div>
+              <span style={styles.sectionBadge}>
+                📚 PROGRESS
+              </span>
+
+              <h2 style={styles.sectionTitle}>
+                Interview History
+              </h2>
+
+              <p style={styles.sectionDescription}>
+                Review your previous attempts
+                and track your improvement.
               </p>
             </div>
-          ))
-        )}
+
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={
+                  handleResetHistory
+                }
+                style={styles.clearButton}
+              >
+                🗑 Clear History
+              </button>
+            )}
+          </div>
+
+          {history.length === 0 ? (
+            <div style={styles.emptyHistory}>
+              <div style={styles.emptyIcon}>
+                🎤
+              </div>
+
+              <h3>
+                No interview attempts yet
+              </h3>
+
+              <p>
+                Start your first interview
+                practice above.
+              </p>
+            </div>
+          ) : (
+            <div style={styles.historyList}>
+              {history.map(
+                (item, index) => {
+                  const itemScore =
+                    Number(
+                      item.score
+                    ) || 0;
+
+                  return (
+                    <div
+                      key={
+                        item._id ||
+                        `${item.question}-${index}`
+                      }
+                      style={styles.historyItem}
+                    >
+                      <div style={styles.historyItemTop}>
+                        <div>
+                          <div style={styles.historyBadges}>
+                            <span
+                              style={
+                                styles.categoryBadge
+                              }
+                            >
+                              {item.category}
+                            </span>
+
+                            <span
+                              style={
+                                styles.historyDifficulty
+                              }
+                            >
+                              {item.difficulty}
+                            </span>
+                          </div>
+
+                          <h3
+                            style={
+                              styles.historyQuestion
+                            }
+                          >
+                            {item.question}
+                          </h3>
+                        </div>
+
+                        <div
+                          style={{
+                            ...styles.historyScore,
+                            color:
+                              getScoreColor(
+                                itemScore
+                              ),
+                          }}
+                        >
+                          {itemScore}
+                          <span>
+                            /100
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        style={
+                          styles.historyAnswer
+                        }
+                      >
+                        <strong>
+                          Your Answer
+                        </strong>
+
+                        <p>
+                          {item.answer}
+                        </p>
+                      </div>
+
+                      <div
+                        style={
+                          styles.historyFeedback
+                        }
+                      >
+                        <strong>
+                          💡 Feedback
+                        </strong>
+
+                        <p>
+                          {item.feedback}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+
+        </section>
+
       </div>
     </div>
   );
+};
+
+/* =========================================================
+   STYLES
+========================================================= */
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background:
+      "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
+    padding: "35px 20px 60px",
+    boxSizing: "border-box",
+  },
+
+  container: {
+    maxWidth: "1180px",
+    margin: "0 auto",
+  },
+
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "25px",
+    marginBottom: "28px",
+    flexWrap: "wrap",
+  },
+
+  titleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+  },
+
+  robotIcon: {
+    width: "58px",
+    height: "58px",
+    borderRadius: "18px",
+    background:
+      "linear-gradient(135deg, #4f46e5, #7c3aed)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "28px",
+    boxShadow:
+      "0 10px 25px rgba(79,70,229,0.25)",
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "32px",
+    fontWeight: "800",
+    color: "#111827",
+  },
+
+  subtitle: {
+    margin: "7px 0 0",
+    color: "#64748b",
+    fontSize: "15px",
+    lineHeight: "1.6",
+  },
+
+  welcomeCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "15px 20px",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "16px",
+    boxShadow:
+      "0 5px 20px rgba(15,23,42,0.06)",
+  },
+
+  welcomeIcon: {
+    fontSize: "24px",
+  },
+
+  welcomeSmall: {
+    display: "block",
+    fontSize: "12px",
+    color: "#94a3b8",
+  },
+
+  welcomeName: {
+    display: "block",
+    marginTop: "3px",
+    fontSize: "16px",
+    color: "#1e293b",
+  },
+
+  warning: {
+    display: "flex",
+    gap: "13px",
+    alignItems: "flex-start",
+    padding: "16px 18px",
+    marginBottom: "20px",
+    borderRadius: "14px",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
+    color: "#92400e",
+  },
+
+  alertIcon: {
+    fontSize: "20px",
+  },
+
+  alertText: {
+    margin: "4px 0 0",
+    fontSize: "14px",
+  },
+
+  error: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "14px 16px",
+    marginBottom: "20px",
+    background: "#fef2f2",
+    border: "1px solid #fecaca",
+    color: "#991b1b",
+    borderRadius: "14px",
+    fontSize: "14px",
+  },
+
+  closeError: {
+    marginLeft: "auto",
+    border: "none",
+    background: "transparent",
+    color: "#991b1b",
+    fontSize: "22px",
+    cursor: "pointer",
+  },
+
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "16px",
+    marginBottom: "22px",
+  },
+
+  statCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    padding: "20px",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "18px",
+    boxShadow:
+      "0 6px 20px rgba(15,23,42,0.05)",
+  },
+
+  statIcon: {
+    width: "48px",
+    height: "48px",
+    borderRadius: "14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "23px",
+  },
+
+  statLabel: {
+    display: "block",
+    color: "#64748b",
+    fontSize: "13px",
+  },
+
+  statValue: {
+    display: "block",
+    marginTop: "4px",
+    color: "#111827",
+    fontSize: "25px",
+  },
+
+  practiceCard: {
+    padding: "28px",
+    marginBottom: "20px",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "20px",
+    boxShadow:
+      "0 8px 30px rgba(15,23,42,0.06)",
+  },
+
+  sectionHeader: {
+    marginBottom: "22px",
+  },
+
+  sectionBadge: {
+    display: "inline-block",
+    padding: "6px 10px",
+    borderRadius: "999px",
+    background: "#eef2ff",
+    color: "#4f46e5",
+    fontSize: "11px",
+    fontWeight: "800",
+    letterSpacing: "0.5px",
+  },
+
+  sectionTitle: {
+    margin: "9px 0 4px",
+    color: "#111827",
+    fontSize: "22px",
+  },
+
+  sectionDescription: {
+    margin: 0,
+    color: "#64748b",
+    fontSize: "14px",
+  },
+
+  controls: {
+    display: "grid",
+    gridTemplateColumns:
+      "minmax(180px, 1fr) minmax(150px, 0.8fr) auto",
+    gap: "16px",
+    alignItems: "end",
+  },
+
+  controlGroup: {
+    minWidth: 0,
+  },
+
+  label: {
+    display: "block",
+    marginBottom: "8px",
+    color: "#334155",
+    fontWeight: "700",
+    fontSize: "13px",
+  },
+
+  select: {
+    width: "100%",
+    padding: "13px 14px",
+    borderRadius: "12px",
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    color: "#1e293b",
+    fontSize: "15px",
+    outline: "none",
+    boxSizing: "border-box",
+  },
+
+  primaryButton: {
+    padding: "13px 22px",
+    border: "none",
+    borderRadius: "12px",
+    background:
+      "linear-gradient(135deg, #111827, #334155)",
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: "14px",
+    cursor: "pointer",
+    minHeight: "46px",
+    boxShadow:
+      "0 7px 18px rgba(15,23,42,0.18)",
+  },
+
+  questionCard: {
+    padding: "30px",
+    marginBottom: "20px",
+    background: "#ffffff",
+    border: "1px solid #ddd6fe",
+    borderRadius: "20px",
+    boxShadow:
+      "0 10px 35px rgba(79,70,229,0.08)",
+  },
+
+  questionTop: {
+    marginBottom: "20px",
+  },
+
+  questionNumber: {
+    color: "#6366f1",
+    fontSize: "11px",
+    fontWeight: "800",
+    letterSpacing: "1px",
+  },
+
+  badges: {
+    display: "flex",
+    gap: "8px",
+    marginTop: "10px",
+    flexWrap: "wrap",
+  },
+
+  categoryBadge: {
+    display: "inline-block",
+    padding: "6px 11px",
+    borderRadius: "999px",
+    background: "#eef2ff",
+    color: "#4f46e5",
+    fontSize: "12px",
+    fontWeight: "700",
+  },
+
+  difficultyBadge: {
+    display: "inline-block",
+    padding: "6px 11px",
+    borderRadius: "999px",
+    fontSize: "12px",
+    fontWeight: "700",
+  },
+
+  easyBadge: {
+    background: "#dcfce7",
+    color: "#166534",
+  },
+
+  mediumBadge: {
+    background: "#fef3c7",
+    color: "#92400e",
+  },
+
+  hardBadge: {
+    background: "#fee2e2",
+    color: "#991b1b",
+  },
+
+  questionBox: {
+    display: "flex",
+    gap: "18px",
+    alignItems: "flex-start",
+    padding: "22px",
+    background:
+      "linear-gradient(135deg, #eef2ff, #f5f3ff)",
+    borderRadius: "16px",
+    marginBottom: "24px",
+  },
+
+  questionMark: {
+    width: "40px",
+    height: "40px",
+    flexShrink: 0,
+    borderRadius: "12px",
+    background: "#4f46e5",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "800",
+  },
+
+  questionText: {
+    margin: 0,
+    color: "#1e293b",
+    fontSize: "20px",
+    lineHeight: "1.55",
+  },
+
+  answerSection: {
+    marginTop: "10px",
+  },
+
+  answerLabel: {
+    display: "block",
+    marginBottom: "9px",
+    fontWeight: "700",
+    color: "#334155",
+  },
+
+  textarea: {
+    width: "100%",
+    padding: "16px",
+    borderRadius: "14px",
+    border: "1px solid #cbd5e1",
+    resize: "vertical",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+    fontSize: "15px",
+    lineHeight: "1.6",
+    color: "#1e293b",
+    outline: "none",
+    minHeight: "170px",
+    background: "#f8fafc",
+  },
+
+  answerFooter: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "15px",
+    marginTop: "12px",
+    flexWrap: "wrap",
+  },
+
+  characterCount: {
+    color: "#94a3b8",
+    fontSize: "12px",
+  },
+
+  evaluateButton: {
+    padding: "13px 20px",
+    border: "none",
+    borderRadius: "12px",
+    background:
+      "linear-gradient(135deg, #4f46e5, #7c3aed)",
+    color: "#ffffff",
+    fontWeight: "700",
+    cursor: "pointer",
+    boxShadow:
+      "0 7px 18px rgba(79,70,229,0.25)",
+  },
+
+  resultCard: {
+    padding: "28px",
+    marginBottom: "20px",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "20px",
+    boxShadow:
+      "0 10px 30px rgba(15,23,42,0.07)",
+  },
+
+  resultHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "20px",
+  },
+
+  scoreCircle: {
+    width: "92px",
+    height: "92px",
+    borderRadius: "50%",
+    border: "6px solid",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+
+  resultProgress: {
+    height: "10px",
+    margin: "22px 0",
+    borderRadius: "999px",
+    background: "#e2e8f0",
+    overflow: "hidden",
+  },
+
+  resultProgressFill: {
+    height: "100%",
+    borderRadius: "999px",
+    transition: "width 0.5s ease",
+  },
+
+  feedbackBox: {
+    display: "flex",
+    gap: "13px",
+    padding: "18px",
+    borderRadius: "15px",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+  },
+
+  feedbackIcon: {
+    fontSize: "22px",
+  },
+
+  feedbackTitle: {
+    color: "#1e293b",
+  },
+
+  feedbackText: {
+    margin: "7px 0 0",
+    color: "#475569",
+    lineHeight: "1.6",
+    fontSize: "14px",
+  },
+
+  nextButton: {
+    marginTop: "18px",
+    padding: "12px 18px",
+    border: "none",
+    borderRadius: "11px",
+    background: "#111827",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
+
+  historyCard: {
+    padding: "28px",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "20px",
+    boxShadow:
+      "0 8px 30px rgba(15,23,42,0.05)",
+  },
+
+  historyHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "20px",
+    flexWrap: "wrap",
+    marginBottom: "22px",
+  },
+
+  clearButton: {
+    padding: "10px 14px",
+    borderRadius: "10px",
+    border: "1px solid #fecaca",
+    background: "#fff5f5",
+    color: "#b91c1c",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  emptyHistory: {
+    textAlign: "center",
+    padding: "45px 20px",
+    background: "#f8fafc",
+    borderRadius: "16px",
+    border: "1px dashed #cbd5e1",
+  },
+
+  emptyIcon: {
+    fontSize: "42px",
+    marginBottom: "8px",
+  },
+
+  historyList: {
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  historyItem: {
+    padding: "22px 0",
+    borderBottom: "1px solid #e2e8f0",
+  },
+
+  historyItemTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "20px",
+    alignItems: "flex-start",
+  },
+
+  historyBadges: {
+    display: "flex",
+    gap: "8px",
+    marginBottom: "10px",
+    flexWrap: "wrap",
+  },
+
+  historyDifficulty: {
+    padding: "6px 11px",
+    borderRadius: "999px",
+    background: "#f1f5f9",
+    color: "#475569",
+    fontSize: "12px",
+    fontWeight: "700",
+  },
+
+  historyQuestion: {
+    margin: 0,
+    color: "#1e293b",
+    fontSize: "16px",
+    lineHeight: "1.5",
+  },
+
+  historyScore: {
+    fontSize: "26px",
+    fontWeight: "800",
+    whiteSpace: "nowrap",
+  },
+
+  historyAnswer: {
+    marginTop: "15px",
+    padding: "14px",
+    background: "#f8fafc",
+    borderRadius: "12px",
+  },
+
+  historyFeedback: {
+    marginTop: "10px",
+    padding: "14px",
+    background: "#f5f3ff",
+    borderRadius: "12px",
+  },
 };
 
 export default AIInterviewPage;

@@ -1,19 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import api from "../../services/api";
-
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
+import { getMyApplications } from "../../services/applicationService";
 
 function ApplicationAnalytics() {
   const [applications, setApplications] = useState([]);
@@ -21,43 +7,105 @@ function ApplicationAnalytics() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let ignore = false;
+    let mounted = true;
 
-    async function loadApplications() {
+    const loadApplications = async () => {
       try {
-        const res = await api.get("/application/all");
+        setLoading(true);
+        setError("");
 
-        console.log("Analytics Applications:", res.data);
+        // =====================================
+        // GET LOGGED-IN USER
+        // =====================================
 
-        if (!ignore) {
-          setApplications(res.data.applications || []);
+        const storedUser =
+          sessionStorage.getItem("user") ||
+          localStorage.getItem("user");
+
+        if (!storedUser) {
+          throw new Error("Please login first.");
         }
-      } catch (error) {
-        console.error("Analytics Error:", error);
 
-        if (!ignore) {
+        let user;
+
+        try {
+          user = JSON.parse(storedUser);
+        } catch (parseError) {
+          console.error(
+            "User JSON Error:",
+            parseError
+          );
+
+          throw new Error(
+            "Invalid login information. Please login again.", { cause: parseError }
+          );
+        }
+
+        const studentId =
+          user._id ||
+          user.id ||
+          user.userId;
+
+        if (!studentId) {
+          throw new Error(
+            "Student ID not found. Please logout and login again."
+          );
+        }
+
+        console.log(
+          "Application Analytics Student ID:",
+          studentId
+        );
+
+        // =====================================
+        // GET ONLY LOGGED-IN STUDENT'S DATA
+        // =====================================
+
+        const data =
+          await getMyApplications(studentId);
+
+        console.log(
+          "Application Analytics Response:",
+          data
+        );
+
+        if (mounted) {
+          setApplications(
+            Array.isArray(data.applications)
+              ? data.applications
+              : []
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Analytics Error:",
+          err
+        );
+
+        if (mounted) {
           setError(
-            error.response?.data?.message ||
+            err.response?.data?.message ||
+              err.message ||
               "Unable to load application analytics."
           );
         }
       } finally {
-        if (!ignore) {
+        if (mounted) {
           setLoading(false);
         }
       }
-    }
+    };
 
     loadApplications();
 
     return () => {
-      ignore = true;
+      mounted = false;
     };
   }, []);
 
-  // ==========================================
-  // APPLICATION COUNTS
-  // ==========================================
+  // =====================================
+  // ANALYTICS
+  // =====================================
 
   const analytics = useMemo(() => {
     const total = applications.length;
@@ -66,10 +114,14 @@ function ApplicationAnalytics() {
       (app) => app.status === "Applied"
     ).length;
 
-    const shortlisted = applications.filter(
+    const pending = applications.filter(
       (app) =>
-        app.status === "Shortlisted" ||
+        app.status === "Pending" ||
         app.status === "OA"
+    ).length;
+
+    const shortlisted = applications.filter(
+      (app) => app.status === "Shortlisted"
     ).length;
 
     const interview = applications.filter(
@@ -86,166 +138,169 @@ function ApplicationAnalytics() {
 
     const successRate =
       total > 0
-        ? Math.round((selected / total) * 100)
+        ? Math.round(
+            (selected / total) * 100
+          )
         : 0;
+
+    const active =
+      total - selected - rejected;
 
     return {
       total,
       applied,
+      pending,
       shortlisted,
       interview,
       selected,
       rejected,
       successRate,
+      active,
     };
   }, [applications]);
 
-  // ==========================================
-  // CHART DATA
-  // ==========================================
-
-  const chartData = [
-    {
-      name: "Applied",
-      value: analytics.applied,
-    },
-    {
-      name: "Shortlisted",
-      value: analytics.shortlisted,
-    },
-    {
-      name: "Interview",
-      value: analytics.interview,
-    },
-    {
-      name: "Selected",
-      value: analytics.selected,
-    },
-    {
-      name: "Rejected",
-      value: analytics.rejected,
-    },
-  ];
-
-  const COLORS = [
-    "#2196F3",
-    "#FFC107",
-    "#FF9800",
-    "#4CAF50",
-    "#F44336",
-  ];
-
-  // ==========================================
+  // =====================================
   // LOADING
-  // ==========================================
+  // =====================================
 
   if (loading) {
     return (
       <div className="p-8">
-        <h1 className="text-3xl font-bold">
-          Application Analytics
-        </h1>
+        <div className="bg-white rounded-2xl shadow p-10 text-center">
 
-        <p className="mt-4">
-          Loading analytics...
-        </p>
-      </div>
-    );
-  }
+          <h1 className="text-2xl font-bold text-gray-800">
+            Loading Application Analytics...
+          </h1>
 
-  // ==========================================
-  // ERROR
-  // ==========================================
+          <p className="text-gray-500 mt-3">
+            Please wait while we analyze your applications.
+          </p>
 
-  if (error) {
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-4">
-          Application Analytics
-        </h1>
-
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg">
-          {error}
         </div>
       </div>
     );
   }
 
-  // ==========================================
-  // PAGE
-  // ==========================================
+  // =====================================
+  // ERROR
+  // =====================================
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8">
+
+          <h1 className="text-2xl font-bold text-red-600">
+            Unable to Load Analytics
+          </h1>
+
+          <p className="text-red-500 mt-3">
+            {error}
+          </p>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+          >
+            Try Again
+          </button>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
 
+      {/* ================================= */}
       {/* HEADER */}
+      {/* ================================= */}
 
       <div className="mb-8">
-        <h1 className="text-4xl font-bold">
+
+        <h1 className="text-4xl font-bold text-gray-800">
           📊 Application Analytics
         </h1>
 
         <p className="text-gray-600 mt-2">
           Track your placement application progress.
         </p>
+
       </div>
 
+      {/* ================================= */}
       {/* STAT CARDS */}
+      {/* ================================= */}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
         <Card
           title="Total Applications"
           value={analytics.total}
-          color="#007bff"
+          className="bg-blue-600"
         />
 
         <Card
           title="Applied"
           value={analytics.applied}
-          color="#17a2b8"
+          className="bg-cyan-600"
+        />
+
+        <Card
+          title="Pending / OA"
+          value={analytics.pending}
+          className="bg-yellow-500"
         />
 
         <Card
           title="Shortlisted"
           value={analytics.shortlisted}
-          color="#ffc107"
+          className="bg-orange-500"
         />
 
         <Card
           title="Interviews"
           value={analytics.interview}
-          color="#fd7e14"
+          className="bg-purple-600"
         />
 
         <Card
           title="Selected"
           value={analytics.selected}
-          color="#28a745"
+          className="bg-green-600"
         />
 
         <Card
           title="Rejected"
           value={analytics.rejected}
-          color="#dc3545"
+          className="bg-red-600"
+        />
+
+        <Card
+          title="Active Applications"
+          value={analytics.active}
+          className="bg-indigo-600"
         />
 
       </div>
 
+      {/* ================================= */}
       {/* SUCCESS RATE */}
+      {/* ================================= */}
 
-      <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
+      <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
 
-        <h2 className="text-2xl font-bold">
+        <h2 className="text-2xl font-bold text-gray-800">
           Placement Success Rate
         </h2>
 
-        <div className="flex items-center gap-6 mt-5">
+        <div className="flex items-center gap-5 mt-5">
 
-          <div className="w-full bg-gray-200 rounded-full h-5">
+          <div className="flex-1 bg-gray-200 rounded-full h-5 overflow-hidden">
 
             <div
-              className="bg-green-500 h-5 rounded-full transition-all"
+              className="bg-green-500 h-5 rounded-full transition-all duration-700"
               style={{
                 width: `${analytics.successRate}%`,
               }}
@@ -253,7 +308,7 @@ function ApplicationAnalytics() {
 
           </div>
 
-          <span className="text-2xl font-bold">
+          <span className="text-2xl font-bold text-gray-800">
             {analytics.successRate}%
           </span>
 
@@ -261,109 +316,77 @@ function ApplicationAnalytics() {
 
       </div>
 
-      {/* CHARTS */}
+      {/* ================================= */}
+      {/* STATUS SUMMARY */}
+      {/* ================================= */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
 
-        {/* PIE CHART */}
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          Application Status Summary
+        </h2>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="space-y-5">
 
-          <h2 className="text-2xl font-bold mb-4">
-            Application Distribution
-          </h2>
+          <StatusBar
+            label="Applied"
+            value={analytics.applied}
+            total={analytics.total}
+          />
 
-          {analytics.total === 0 ? (
-            <div className="h-75 flex items-center justify-center text-gray-500">
-              No application data available.
-            </div>
-          ) : (
-            <ResponsiveContainer
-              width="100%"
-              height={300}
-            >
-              <PieChart>
+          <StatusBar
+            label="Pending / OA"
+            value={analytics.pending}
+            total={analytics.total}
+          />
 
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={100}
-                  label
-                >
+          <StatusBar
+            label="Shortlisted"
+            value={analytics.shortlisted}
+            total={analytics.total}
+          />
 
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`${entry.name}-${index}`}
-                      fill={COLORS[index]}
-                    />
-                  ))}
+          <StatusBar
+            label="Interview"
+            value={analytics.interview}
+            total={analytics.total}
+          />
 
-                </Pie>
+          <StatusBar
+            label="Selected"
+            value={analytics.selected}
+            total={analytics.total}
+          />
 
-                <Tooltip />
-
-                <Legend />
-
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-
-        </div>
-
-        {/* BAR CHART */}
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-
-          <h2 className="text-2xl font-bold mb-4">
-            Application Status
-          </h2>
-
-          <ResponsiveContainer
-            width="100%"
-            height={300}
-          >
-            <BarChart data={chartData}>
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-              />
-
-              <XAxis dataKey="name" />
-
-              <YAxis allowDecimals={false} />
-
-              <Tooltip />
-
-              <Bar
-                dataKey="value"
-                fill="#1976d2"
-                radius={[6, 6, 0, 0]}
-              />
-
-            </BarChart>
-          </ResponsiveContainer>
+          <StatusBar
+            label="Rejected"
+            value={analytics.rejected}
+            total={analytics.total}
+          />
 
         </div>
 
       </div>
 
+      {/* ================================= */}
       {/* RECENT APPLICATIONS */}
+      {/* ================================= */}
 
-      <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
+      <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
 
-        <h2 className="text-2xl font-bold mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
           Recent Applications
         </h2>
 
         {applications.length === 0 ? (
+          <div className="text-center py-8">
 
-          <p className="text-gray-500">
-            No Applications Found
-          </p>
+            <p className="text-gray-500">
+              No Applications Found
+            </p>
 
+          </div>
         ) : (
-
           <div className="overflow-x-auto">
 
             <table className="w-full">
@@ -374,6 +397,10 @@ function ApplicationAnalytics() {
 
                   <th className="text-left p-4">
                     Company
+                  </th>
+
+                  <th className="text-left p-4">
+                    Role
                   </th>
 
                   <th className="text-left p-4">
@@ -395,10 +422,12 @@ function ApplicationAnalytics() {
                   .sort(
                     (a, b) =>
                       new Date(
-                        b.appliedAt || b.createdAt
+                        b.appliedAt ||
+                          b.createdAt
                       ) -
                       new Date(
-                        a.appliedAt || a.createdAt
+                        a.appliedAt ||
+                          a.createdAt
                       )
                   )
                   .slice(0, 5)
@@ -409,23 +438,44 @@ function ApplicationAnalytics() {
                       className="border-b hover:bg-gray-50"
                     >
 
-                      <td className="p-4">
+                      <td className="p-4 font-medium">
                         {app.company?.companyName ||
                           app.company?.name ||
                           "-"}
                       </td>
 
                       <td className="p-4">
-                        <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-                          {app.status || "Unknown"}
-                        </span>
+                        {app.company?.role ||
+                          "-"}
                       </td>
 
                       <td className="p-4">
+
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            app.status === "Selected"
+                              ? "bg-green-100 text-green-700"
+                              : app.status === "Rejected"
+                              ? "bg-red-100 text-red-700"
+                              : app.status === "Interview"
+                              ? "bg-purple-100 text-purple-700"
+                              : app.status === "Shortlisted"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {app.status || "Unknown"}
+                        </span>
+
+                      </td>
+
+                      <td className="p-4">
+
                         {new Date(
                           app.appliedAt ||
                             app.createdAt
                         ).toLocaleDateString()}
+
                       </td>
 
                     </tr>
@@ -437,7 +487,6 @@ function ApplicationAnalytics() {
             </table>
 
           </div>
-
         )}
 
       </div>
@@ -446,17 +495,18 @@ function ApplicationAnalytics() {
   );
 }
 
-// ==========================================
+// =====================================
 // STAT CARD
-// ==========================================
+// =====================================
 
-function Card({ title, value, color }) {
+function Card({
+  title,
+  value,
+  className,
+}) {
   return (
     <div
-      style={{
-        background: color,
-      }}
-      className="text-white p-6 rounded-xl shadow-lg"
+      className={`${className} text-white p-6 rounded-2xl shadow-lg`}
     >
 
       <p className="text-lg font-medium">
@@ -466,6 +516,52 @@ function Card({ title, value, color }) {
       <h2 className="text-4xl font-bold mt-3">
         {value}
       </h2>
+
+    </div>
+  );
+}
+
+// =====================================
+// STATUS BAR
+// =====================================
+
+function StatusBar({
+  label,
+  value,
+  total,
+}) {
+  const percentage =
+    total > 0
+      ? Math.round(
+          (value / total) * 100
+        )
+      : 0;
+
+  return (
+    <div>
+
+      <div className="flex justify-between mb-2">
+
+        <span className="font-medium text-gray-700">
+          {label}
+        </span>
+
+        <span className="text-gray-500">
+          {value} ({percentage}%)
+        </span>
+
+      </div>
+
+      <div className="w-full bg-gray-200 rounded-full h-3">
+
+        <div
+          className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+          style={{
+            width: `${percentage}%`,
+          }}
+        />
+
+      </div>
 
     </div>
   );

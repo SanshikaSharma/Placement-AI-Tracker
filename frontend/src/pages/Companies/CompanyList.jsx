@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { getCompanies } from "../../services/companyService";
 import CompanyCard from "../../components/company/CompanyCard";
 
@@ -17,7 +16,7 @@ function CompanyList() {
           setCompanies(res.companies || []);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to fetch companies:", err);
       }
     }
 
@@ -30,22 +29,18 @@ function CompanyList() {
 
   return (
     <div className="p-8">
-
-      <div className="flex justify-between items-center mb-8">
-
+      {/* Page Header */}
+      <div className="mb-8">
         <h1 className="text-3xl font-bold">
           Companies
         </h1>
 
-        <Link
-          to="/companies/add"
-          className="bg-blue-700 hover:bg-blue-800 text-white px-5 py-3 rounded-xl"
-        >
-          + Add Company
-        </Link>
-
+        <p className="text-gray-500 mt-2">
+          Explore available companies and placement opportunities.
+        </p>
       </div>
 
+      {/* Companies */}
       {companies.length === 0 ? (
         <div className="bg-white rounded-xl shadow p-8 text-center">
           No Companies Found
@@ -53,19 +48,13 @@ function CompanyList() {
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
           {companies.map((company) => (
-           <CompanyCard
-  key={company._id}
-  company={company}
-  onDelete={(id) =>
-    setCompanies((prev) =>
-      prev.filter((company) => company._id !== id)
-    )
-  }
-/>
+            <CompanyCard
+              key={company._id}
+              company={company}
+            />
           ))}
         </div>
       )}
-
     </div>
   );
 }

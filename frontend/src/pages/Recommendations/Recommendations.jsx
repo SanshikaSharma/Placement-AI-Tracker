@@ -3,25 +3,25 @@ import { Link } from "react-router-dom";
 import api from "../../services/api";
 
 function Recommendations() {
-  const [companies, setCompanies] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     const loadRecommendations = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // ============================
-        // GET LOGGED-IN USER
-        // ============================
-
-        const storedUser = localStorage.getItem("user");
+        // Get logged-in user
+        const storedUser =
+          sessionStorage.getItem("user") ||
+          localStorage.getItem("user");
 
         if (!storedUser) {
-          setError("Please login first.");
-          return;
+          throw new Error("Please login first.");
         }
 
         let user;
@@ -30,8 +30,9 @@ function Recommendations() {
           user = JSON.parse(storedUser);
         } catch (parseError) {
           console.error("User JSON Error:", parseError);
-          setError("Invalid login information. Please login again.");
-          return;
+          throw new Error(
+            "Invalid login information. Please login again.", { cause: parseError }
+          );
         }
 
         const studentId =
@@ -40,225 +41,231 @@ function Recommendations() {
           user.userId;
 
         if (!studentId) {
-          setError(
-            "Student ID not found. Please login again."
+          throw new Error(
+            "Student ID not found. Please logout and login again."
           );
-          return;
         }
-
-        console.log("Logged-in Student ID:", studentId);
-
-        // ============================
-        // GET ALL COMPANIES
-        // ============================
-
-        const companyResponse = await api.get("/company");
 
         console.log(
-          "Company Response:",
-          companyResponse.data
+          "Recommendation Student ID:",
+          studentId
         );
 
-        if (!companyResponse.data?.success) {
-          setError(
-            companyResponse.data?.message ||
-              "Unable to load companies."
+        // =====================================
+        // GET AI RECOMMENDATIONS
+        // =====================================
+
+        const response = await api.get(
+          `/recommendations/${studentId}`
+        );
+
+        console.log(
+          "Recommendation Response:",
+          response.data
+        );
+
+        if (!response.data?.success) {
+          throw new Error(
+            response.data?.message ||
+              "Unable to load recommendations."
           );
-          return;
         }
 
-        const allCompanies = Array.isArray(
-          companyResponse.data.companies
-        )
-          ? companyResponse.data.companies
-          : [];
-
-        if (allCompanies.length === 0) {
-          setCompanies([]);
-          return;
+        if (mounted) {
+          setRecommendations(
+            Array.isArray(response.data.recommendations)
+              ? response.data.recommendations
+              : []
+          );
         }
-
-        // ============================
-        // CHECK ELIGIBILITY
-        // ============================
-
-        const recommendationResults = await Promise.all(
-          allCompanies.map(async (company) => {
-            try {
-              if (!company?._id) {
-                return {
-                  ...company,
-                  eligibilityAnalysis: null,
-                };
-              }
-
-              const response = await api.get(
-                `/eligibility/${studentId}/${company._id}`
-              );
-
-              console.log(
-                `Eligibility for ${company.companyName}:`,
-                response.data
-              );
-
-              return {
-                ...company,
-                eligibilityAnalysis:
-                  response.data?.analysis || null,
-              };
-            } catch (eligibilityError) {
-              console.error(
-                `Eligibility Error - ${company.companyName}:`,
-                eligibilityError
-              );
-
-              return {
-                ...company,
-                eligibilityAnalysis: null,
-              };
-            }
-          })
-        );
-
-        // ============================
-        // SORT BY SCORE
-        // ============================
-
-        recommendationResults.sort((a, b) => {
-          const scoreA =
-            a.eligibilityAnalysis?.score ?? 0;
-
-          const scoreB =
-            b.eligibilityAnalysis?.score ?? 0;
-
-          return scoreB - scoreA;
-        });
-
-        setCompanies(recommendationResults);
       } catch (err) {
         console.error(
-          "Recommendations Error:",
+          "Recommendation Error:",
           err
         );
 
-        setError(
-          err.response?.data?.message ||
-            "Unable to load recommendations."
-        );
+        if (mounted) {
+          setError(
+            err.response?.data?.message ||
+              err.message ||
+              "Unable to load recommendations."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadRecommendations();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // ============================
+  // =====================================
   // LOADING
-  // ============================
+  // =====================================
 
   if (loading) {
     return (
       <div className="p-8">
-        <div className="bg-white rounded-xl shadow p-8">
-          <h1 className="text-3xl font-bold">
-            Finding Best Companies...
+        <div className="bg-white rounded-2xl shadow p-10 text-center">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Finding Best Job Recommendations...
           </h1>
 
           <p className="text-gray-500 mt-3">
-            AI is checking your eligibility.
+            AI is analyzing your profile and available jobs.
           </p>
         </div>
       </div>
     );
   }
 
-  // ============================
+  // =====================================
   // ERROR
-  // ============================
+  // =====================================
 
   if (error) {
     return (
       <div className="p-8">
-        <div className="bg-red-100 border border-red-300 text-red-700 p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-2">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+          <h2 className="text-2xl font-bold text-red-600">
             Unable to Load Recommendations
           </h2>
 
-          <p>{error}</p>
+          <p className="text-red-500 mt-3">
+            {error}
+          </p>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
   }
 
-  // ============================
+  // =====================================
   // PAGE
-  // ============================
+  // =====================================
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-gray-50 min-h-screen">
+
+      {/* HEADER */}
 
       <div className="mb-8">
-        <h1 className="text-4xl font-bold">
+        <h1 className="text-4xl font-bold text-gray-800">
           AI Job Recommendations
         </h1>
 
         <p className="text-gray-600 mt-2">
-          Companies are ranked according to your
-          eligibility score.
+          Jobs are ranked according to how well they match
+          your profile.
         </p>
       </div>
 
-      {companies.length === 0 ? (
-        <div className="bg-white rounded-xl shadow p-8">
-          <h2 className="text-xl font-semibold">
-            No companies available
+      {/* EMPTY STATE */}
+
+      {recommendations.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow p-10 text-center">
+
+          <h2 className="text-2xl font-semibold text-gray-800">
+            No Recommendations Available
           </h2>
 
-          <p className="text-gray-500 mt-2">
-            No placement companies are currently available.
+          <p className="text-gray-500 mt-3">
+            No suitable job opportunities are currently
+            available.
           </p>
+
+          <Link
+            to="/companies"
+            className="inline-block mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+          >
+            Explore Companies
+          </Link>
+
         </div>
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-          {companies.map((company) => {
-            const analysis =
-              company.eligibilityAnalysis;
+          {recommendations.map((item) => {
+            const company = item.company || {};
 
-            const score =
-              analysis?.score ?? 0;
+            // =====================================
+            // AI RECOMMENDATION SCORE
+            // =====================================
 
-            const status =
-              analysis?.eligibilityStatus ||
-              "Not Available";
+            const rawScore = Number(item.score);
+
+            const score = Number.isFinite(rawScore)
+              ? Math.min(Math.max(rawScore, 0), 100)
+              : 0;
+
+            // =====================================
+            // SCORE COLORS
+            // =====================================
 
             let scoreColor =
               "bg-red-100 text-red-700";
 
+            let progressColor =
+              "bg-red-500";
+
+            let matchText =
+              "Low Match";
+
             if (score >= 85) {
               scoreColor =
                 "bg-green-100 text-green-700";
+
+              progressColor =
+                "bg-green-500";
+
+              matchText =
+                "Excellent Match";
             } else if (score >= 70) {
               scoreColor =
                 "bg-blue-100 text-blue-700";
+
+              progressColor =
+                "bg-blue-500";
+
+              matchText =
+                "Good Match";
             } else if (score >= 50) {
               scoreColor =
                 "bg-yellow-100 text-yellow-700";
+
+              progressColor =
+                "bg-yellow-500";
+
+              matchText =
+                "Moderate Match";
             }
 
             return (
               <div
                 key={company._id}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition"
+                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition"
               >
 
+                {/* ================================= */}
                 {/* COMPANY HEADER */}
+                {/* ================================= */}
 
-                <div className="flex justify-between items-start gap-3">
+                <div className="flex justify-between items-start gap-4">
 
                   <div>
-                    <h2 className="text-2xl font-bold">
+                    <h2 className="text-2xl font-bold text-gray-800">
                       {company.companyName || "Company"}
                     </h2>
 
@@ -267,17 +274,60 @@ function Recommendations() {
                     </p>
                   </div>
 
-                  <span
-                    className={`px-3 py-2 rounded-full font-bold whitespace-nowrap ${scoreColor}`}
+                  {/* SCORE */}
+
+                  <div
+                    className={`px-4 py-2 rounded-full font-bold text-lg whitespace-nowrap ${scoreColor}`}
                   >
                     {score}%
-                  </span>
+                  </div>
 
                 </div>
 
-                {/* DETAILS */}
+                {/* ================================= */}
+                {/* MATCH INFORMATION */}
+                {/* ================================= */}
 
-                <div className="mt-5 space-y-2">
+                <div className="mt-4">
+
+                  <div className="flex justify-between items-center mb-2">
+
+                    <span className="text-sm font-semibold text-gray-600">
+                      AI Match Score
+                    </span>
+
+                    <span className="text-sm font-bold text-gray-700">
+                      {matchText}
+                    </span>
+
+                  </div>
+
+                  {/* PROGRESS BAR */}
+
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+
+                    <div
+                      className={`${progressColor} h-3 rounded-full transition-all duration-700`}
+                      style={{
+                        width: `${score}%`,
+                      }}
+                    />
+
+                  </div>
+
+                  <div className="text-right mt-1">
+                    <span className="text-sm font-bold">
+                      {score}% Match
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* ================================= */}
+                {/* COMPANY DETAILS */}
+                {/* ================================= */}
+
+                <div className="mt-5 space-y-2 text-gray-700">
 
                   <p>
                     <strong>Package:</strong>{" "}
@@ -300,98 +350,96 @@ function Recommendations() {
                   </p>
 
                   <p>
-                    <strong>Status:</strong>{" "}
-                    {company.status || "-"}
+                    <strong>Eligibility:</strong>{" "}
+                    {company.eligibility || "-"}
                   </p>
 
                 </div>
 
-                {/* ELIGIBILITY STATUS */}
-
-                {analysis && (
-                  <div className="mt-5">
-
-                    <span
-                      className={`inline-block px-4 py-2 rounded-full font-semibold ${scoreColor}`}
-                    >
-                      {status}
-                    </span>
-
-                  </div>
-                )}
-
+                {/* ================================= */}
                 {/* AI RECOMMENDATION */}
+                {/* ================================= */}
 
-                {analysis?.recommendation && (
-                  <div className="mt-5 bg-gray-50 rounded-lg p-4">
+                {item.recommendation && (
+                  <div className="mt-5 bg-gray-50 rounded-xl p-4">
 
-                    <h3 className="font-semibold mb-2">
-                      AI Recommendation
+                    <h3 className="font-semibold text-gray-800 mb-2">
+                      🤖 AI Recommendation
                     </h3>
 
-                    <p className="text-gray-700 text-sm">
-                      {analysis.recommendation}
+                    <p className="text-sm text-gray-600">
+                      {item.recommendation}
                     </p>
 
                   </div>
                 )}
 
+                {/* ================================= */}
+                {/* REASONS */}
+                {/* ================================= */}
+
+                {Array.isArray(item.reasons) &&
+                  item.reasons.length > 0 && (
+                    <div className="mt-5">
+
+                      <h3 className="font-semibold text-gray-800 mb-2">
+                        Why this job matches
+                      </h3>
+
+                      <ul className="space-y-2">
+
+                        {item.reasons.map(
+                          (reason, index) => (
+                            <li
+                              key={`${company._id}-reason-${index}`}
+                              className="text-sm text-gray-600"
+                            >
+                              <span className="text-green-600 font-bold">
+                                ✓
+                              </span>{" "}
+                              {reason}
+                            </li>
+                          )
+                        )}
+
+                      </ul>
+
+                    </div>
+                  )}
+
+                {/* ================================= */}
                 {/* MISSING SKILLS */}
+                {/* ================================= */}
 
-                {analysis?.missingSkills?.length > 0 && (
-                  <div className="mt-5">
+                {Array.isArray(item.missingSkills) &&
+                  item.missingSkills.length > 0 && (
+                    <div className="mt-5">
 
-                    <h3 className="font-semibold mb-2">
-                      Missing Skills
-                    </h3>
+                      <h3 className="font-semibold text-gray-800 mb-2">
+                        Missing Skills
+                      </h3>
 
-                    <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
 
-                      {analysis.missingSkills.map(
-                        (skill, index) => (
-                          <span
-                            key={`${company._id}-missing-${index}`}
-                            className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm"
-                          >
-                            {skill}
-                          </span>
-                        )
-                      )}
+                        {item.missingSkills.map(
+                          (skill, index) => (
+                            <span
+                              key={`${company._id}-skill-${index}`}
+                              className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm"
+                            >
+                              {skill}
+                            </span>
+                          )
+                        )}
 
-                    </div>
-
-                  </div>
-                )}
-
-                {/* ELIGIBILITY RESULTS */}
-
-                {analysis?.results?.length > 0 && (
-                  <div className="mt-5">
-
-                    <h3 className="font-semibold mb-2">
-                      Eligibility Check
-                    </h3>
-
-                    <div className="space-y-2">
-
-                      {analysis.results.map(
-                        (result, index) => (
-                          <p
-                            key={`${company._id}-result-${index}`}
-                            className="text-sm text-gray-600"
-                          >
-                            {result.status}{" "}
-                            {result.message}
-                          </p>
-                        )
-                      )}
+                      </div>
 
                     </div>
+                  )}
 
-                  </div>
-                )}
-
+                {/* ================================= */}
                 {/* VIEW COMPANY */}
+                {/* ================================= */}
 
                 <Link
                   to={`/company/${company._id}`}
