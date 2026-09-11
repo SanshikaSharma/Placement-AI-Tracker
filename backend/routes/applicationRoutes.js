@@ -10,19 +10,52 @@ const {
   getAllApplications,
 } = require("../controllers/applicationController");
 
-// Apply
-router.post("/apply", applyToCompany);
+const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
+const studentOwnershipMiddleware = require(
+  "../middleware/studentOwnershipMiddleware"
+);
 
-// Student Applications
-router.get("/student/:studentId", getMyApplications);
 
-// ⭐ New Route
-router.get("/all", getAllApplications);
+// Student applies to company
+router.post(
+  "/apply",
+  authMiddleware,
+  applyToCompany
+);
 
-// Update Status
-router.put("/:id/status", updateApplicationStatus);
 
-// Withdraw
-router.delete("/:id", withdrawApplication);
+// Student gets own applications
+router.get(
+  "/student/:studentId",
+  authMiddleware,
+  studentOwnershipMiddleware,
+  getMyApplications
+);
+
+
+// Admin gets all applications
+router.get(
+  "/all",
+  adminMiddleware,
+  getAllApplications
+);
+
+
+// Admin updates application status
+router.put(
+  "/:id/status",
+  adminMiddleware,
+  updateApplicationStatus
+);
+
+
+// Student/admin withdraws application
+router.delete(
+  "/:id",
+  authMiddleware,
+  withdrawApplication
+);
+
 
 module.exports = router;

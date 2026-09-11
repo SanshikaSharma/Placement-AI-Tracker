@@ -11,6 +11,10 @@ const { sendEmail } = require("../utils/emailService");
 
 const getDashboardStats = async (req, res) => {
   try {
+    // --------------------------------------------------
+    // BASIC COUNTS
+    // --------------------------------------------------
+
     const totalStudents = await User.countDocuments({
       role: "student",
     });
@@ -20,33 +24,155 @@ const getDashboardStats = async (req, res) => {
     const totalApplications =
       await Application.countDocuments();
 
-    const selected = await Application.countDocuments({
-      status: "Selected",
-    });
+    // --------------------------------------------------
+    // APPLICATION STATUS COUNTS
+    // --------------------------------------------------
 
-    const pending = await Application.countDocuments({
-      status: "Applied",
-    });
+    const selectedApplications =
+      await Application.countDocuments({
+        status: "Selected",
+      });
 
-    const resumeUploaded = await User.countDocuments({
-      "resume.fileName": { $exists: true, $ne: "" },
-    });
+    const appliedApplications =
+      await Application.countDocuments({
+        status: "Applied",
+      });
+
+    const pendingApplications =
+      await Application.countDocuments({
+        status: "Pending",
+      });
+
+    const oaApplications =
+      await Application.countDocuments({
+        status: "OA",
+      });
+
+    const shortlistedApplications =
+      await Application.countDocuments({
+        status: "Shortlisted",
+      });
+
+    const interviewApplications =
+      await Application.countDocuments({
+        status: "Interview",
+      });
+
+    const rejectedApplications =
+      await Application.countDocuments({
+        status: "Rejected",
+      });
+
+    // --------------------------------------------------
+    // RESUME COUNT
+    // --------------------------------------------------
+
+    const resumeUploaded =
+      await User.countDocuments({
+        role: "student",
+        "resume.fileName": {
+          $exists: true,
+          $ne: "",
+        },
+      });
+
+    // --------------------------------------------------
+    // PLACEMENT PERCENTAGE
+    // --------------------------------------------------
+
+    const placementPercentage =
+      totalStudents > 0
+        ? Number(
+            (
+              (selectedApplications /
+                totalStudents) *
+              100
+            ).toFixed(1)
+          )
+        : 0;
+
+    // --------------------------------------------------
+    // RECENT APPLICATIONS
+    // --------------------------------------------------
+
+    const recentApplications =
+      await Application.find()
+        .populate(
+          "student",
+          "name studentId email"
+        )
+        .populate("company")
+        .sort({
+          createdAt: -1,
+        })
+        .limit(5);
+
+    // --------------------------------------------------
+    // UPCOMING COMPANIES
+    // --------------------------------------------------
+
+    const upcomingCompanies =
+      await Company.find()
+        .sort({
+          deadline: 1,
+          createdAt: -1,
+        })
+        .limit(5);
+
+    // --------------------------------------------------
+    // RESPONSE
+    // --------------------------------------------------
 
     res.status(200).json({
       success: true,
+
       totalStudents,
+
       totalCompanies,
+
       totalApplications,
-      selected,
-      pending,
+
+      selectedStudents:
+        selectedApplications,
+
+      pendingApplications:
+        appliedApplications +
+        pendingApplications +
+        oaApplications,
+
       resumeUploaded,
+
+      placementPercentage,
+
+      recentApplications,
+
+      upcomingCompanies,
+
+      // Additional statistics
+      applicationStats: {
+        applied: appliedApplications,
+        pending: pendingApplications,
+        oa: oaApplications,
+        shortlisted:
+          shortlistedApplications,
+        interview:
+          interviewApplications,
+        selected:
+          selectedApplications,
+        rejected:
+          rejectedApplications,
+      },
     });
   } catch (error) {
-    console.error("Dashboard Stats Error:", error);
+    console.error(
+      "Dashboard Stats Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
-      message: "Unable to load dashboard statistics",
+      message:
+        "Unable to load dashboard statistics",
     });
   }
 };
@@ -61,7 +187,8 @@ const getAnalytics = async (req, res) => {
       role: "student",
     });
 
-    const totalCompanies = await Company.countDocuments();
+    const totalCompanies =
+      await Company.countDocuments();
 
     const totalApplications =
       await Application.countDocuments();
@@ -103,6 +230,7 @@ const getAnalytics = async (req, res) => {
 
     res.status(200).json({
       success: true,
+
       analytics: {
         totalStudents,
         totalCompanies,
@@ -117,7 +245,10 @@ const getAnalytics = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Analytics Error:", error);
+    console.error(
+      "Analytics Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -136,7 +267,9 @@ const getAllStudents = async (req, res) => {
       role: "student",
     })
       .select("-password")
-      .sort({ createdAt: -1 });
+      .sort({
+        createdAt: -1,
+      });
 
     res.status(200).json({
       success: true,
@@ -144,7 +277,10 @@ const getAllStudents = async (req, res) => {
       students,
     });
   } catch (error) {
-    console.error("Get Students Error:", error);
+    console.error(
+      "Get Students Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -173,11 +309,14 @@ const getStudentDetails = async (req, res) => {
       });
     }
 
-    const applications = await Application.find({
-      student: id,
-    })
-      .populate("company")
-      .sort({ createdAt: -1 });
+    const applications =
+      await Application.find({
+        student: id,
+      })
+        .populate("company")
+        .sort({
+          createdAt: -1,
+        });
 
     res.status(200).json({
       success: true,
@@ -185,7 +324,10 @@ const getStudentDetails = async (req, res) => {
       applications,
     });
   } catch (error) {
-    console.error("Student Details Error:", error);
+    console.error(
+      "Student Details Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -229,7 +371,10 @@ const deleteStudent = async (req, res) => {
       message: "Student deleted successfully",
     });
   } catch (error) {
-    console.error("Delete Student Error:", error);
+    console.error(
+      "Delete Student Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -244,9 +389,10 @@ const deleteStudent = async (req, res) => {
 
 const getAllCompanies = async (req, res) => {
   try {
-    const companies = await Company.find().sort({
-      createdAt: -1,
-    });
+    const companies =
+      await Company.find().sort({
+        createdAt: -1,
+      });
 
     res.status(200).json({
       success: true,
@@ -254,7 +400,10 @@ const getAllCompanies = async (req, res) => {
       companies,
     });
   } catch (error) {
-    console.error("Get Companies Error:", error);
+    console.error(
+      "Get Companies Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -271,7 +420,8 @@ const deleteCompany = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const company = await Company.findById(id);
+    const company =
+      await Company.findById(id);
 
     if (!company) {
       return res.status(404).json({
@@ -291,7 +441,10 @@ const deleteCompany = async (req, res) => {
       message: "Company deleted successfully",
     });
   } catch (error) {
-    console.error("Delete Company Error:", error);
+    console.error(
+      "Delete Company Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -306,10 +459,16 @@ const deleteCompany = async (req, res) => {
 
 const getAllApplications = async (req, res) => {
   try {
-    const applications = await Application.find()
-      .populate("student", "-password")
-      .populate("company")
-      .sort({ createdAt: -1 });
+    const applications =
+      await Application.find()
+        .populate(
+          "student",
+          "-password"
+        )
+        .populate("company")
+        .sort({
+          createdAt: -1,
+        });
 
     res.status(200).json({
       success: true,
@@ -317,7 +476,10 @@ const getAllApplications = async (req, res) => {
       applications,
     });
   } catch (error) {
-    console.error("Get Applications Error:", error);
+    console.error(
+      "Get Applications Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -330,14 +492,14 @@ const getAllApplications = async (req, res) => {
 // UPDATE APPLICATION STATUS
 // ======================================================
 
-const updateApplicationStatus = async (req, res) => {
+const updateApplicationStatus = async (
+  req,
+  res
+) => {
   try {
-    // IMPORTANT:
-    // adminRoutes.js uses /application/:id
-    // therefore the parameter is req.params.id
-
     const { id } = req.params;
     const applicationId = id;
+
     const { status } = req.body;
 
     console.log(
@@ -372,11 +534,11 @@ const updateApplicationStatus = async (req, res) => {
     // --------------------------------------------------
 
     const application =
-      await Application.findById(applicationId);
+      await Application.findById(
+        applicationId
+      );
 
     if (!application) {
-      console.log("APPLICATION NOT FOUND");
-
       return res.status(404).json({
         success: false,
         message: "Application not found",
@@ -389,15 +551,7 @@ const updateApplicationStatus = async (req, res) => {
 
     application.status = status;
 
-    console.log(
-      "STEP 1: Saving application status..."
-    );
-
     await application.save();
-
-    console.log(
-      "STEP 2: Application status saved."
-    );
 
     // --------------------------------------------------
     // FIND STUDENT
@@ -405,13 +559,6 @@ const updateApplicationStatus = async (req, res) => {
 
     const student = await User.findById(
       application.student
-    );
-
-    console.log(
-      "STEP 3: Student loaded:",
-      student
-        ? student.email
-        : "STUDENT NOT FOUND"
     );
 
     if (!student) {
@@ -425,16 +572,10 @@ const updateApplicationStatus = async (req, res) => {
     // FIND COMPANY
     // --------------------------------------------------
 
-    const company = await Company.findById(
-      application.company
-    );
-
-    console.log(
-      "STEP 4: Company loaded:",
-      company
-        ? company.name
-        : "COMPANY NOT FOUND"
-    );
+    const company =
+      await Company.findById(
+        application.company
+      );
 
     const companyName = company
       ? company.name
@@ -450,7 +591,8 @@ const updateApplicationStatus = async (req, res) => {
     let notificationMessage =
       `Your application for ${companyName} has been updated to ${status}.`;
 
-    let notificationType = "Application";
+    let notificationType =
+      "Application";
 
     let emailSubject =
       `Application Status Updated - ${companyName}`;
@@ -489,12 +631,14 @@ const updateApplicationStatus = async (req, res) => {
     // --------------------------------------------------
 
     if (status === "Interview") {
-      notificationTitle = "Interview Update";
+      notificationTitle =
+        "Interview Update";
 
       notificationMessage =
         `Your application for ${companyName} has been moved to Interview stage.`;
 
-      notificationType = "Interview";
+      notificationType =
+        "Interview";
 
       emailSubject =
         `Interview Update - ${companyName}`;
@@ -539,7 +683,8 @@ const updateApplicationStatus = async (req, res) => {
       notificationMessage =
         `Congratulations! You have been selected by ${companyName}.`;
 
-      notificationType = "Selection";
+      notificationType =
+        "Selection";
 
       emailSubject =
         `Congratulations! You have been selected by ${companyName}`;
@@ -587,7 +732,8 @@ const updateApplicationStatus = async (req, res) => {
       notificationMessage =
         `Your application for ${companyName} was not selected at this stage. Keep applying and keep improving.`;
 
-      notificationType = "Rejection";
+      notificationType =
+        "Rejection";
 
       emailSubject =
         `Application Status Update - ${companyName}`;
@@ -624,58 +770,37 @@ const updateApplicationStatus = async (req, res) => {
     // CREATE NOTIFICATION
     // --------------------------------------------------
 
-    console.log(
-      "STEP 5: Creating notification..."
-    );
-
-    const notification =
-      await Notification.create({
-        student: student._id,
-        title: notificationTitle,
-        message: notificationMessage,
-        type: notificationType,
-      });
-
-    console.log(
-      "Status Notification Created:",
-      notification._id
-    );
+    await Notification.create({
+      student: student._id,
+      title: notificationTitle,
+      message: notificationMessage,
+      type: notificationType,
+    });
 
     // --------------------------------------------------
     // SEND EMAIL
     // --------------------------------------------------
 
-    console.log(
-      "STEP 6: Sending status email to:",
-      student.email
-    );
-
-    const emailResult = await sendEmail({
-      to: student.email,
-      subject: emailSubject,
-      text: emailText,
-      html: emailHtml,
-    });
-
-    if (emailResult.success) {
-      console.log(
-        "Status Email Sent Successfully:",
-        emailResult.messageId
-      );
-    } else {
-      console.error(
-        "Status Email Failed:",
-        emailResult.message
-      );
-    }
+    const emailResult =
+      await sendEmail({
+        to: student.email,
+        subject: emailSubject,
+        text: emailText,
+        html: emailHtml,
+      });
 
     // --------------------------------------------------
     // GET UPDATED APPLICATION
     // --------------------------------------------------
 
     const updatedApplication =
-      await Application.findById(applicationId)
-        .populate("student", "-password")
+      await Application.findById(
+        applicationId
+      )
+        .populate(
+          "student",
+          "-password"
+        )
         .populate("company");
 
     // --------------------------------------------------
@@ -686,12 +811,19 @@ const updateApplicationStatus = async (req, res) => {
       success: true,
       message:
         "Application status updated successfully",
-      application: updatedApplication,
+
+      application:
+        updatedApplication,
+
       notificationCreated: true,
-      emailSent: emailResult.success,
-      emailMessage: emailResult.success
-        ? "Status email sent successfully"
-        : emailResult.message,
+
+      emailSent:
+        emailResult.success,
+
+      emailMessage:
+        emailResult.success
+          ? "Status email sent successfully"
+          : emailResult.message,
     });
   } catch (error) {
     console.error(
@@ -719,7 +851,9 @@ const getStudentResume = async (req, res) => {
     const student = await User.findOne({
       _id: id,
       role: "student",
-    }).select("name email resume");
+    }).select(
+      "name email resume"
+    );
 
     if (!student) {
       return res.status(404).json({
@@ -743,7 +877,10 @@ const getStudentResume = async (req, res) => {
       resume: student.resume,
     });
   } catch (error) {
-    console.error("Get Resume Error:", error);
+    console.error(
+      "Get Resume Error:",
+      error
+    );
 
     res.status(500).json({
       success: false,
@@ -756,21 +893,15 @@ const getStudentResume = async (req, res) => {
 // DELETE APPLICATION
 // ======================================================
 
-const deleteApplication = async (req, res) => {
+const deleteApplication = async (
+  req,
+  res
+) => {
   try {
-    // IMPORTANT:
-    // adminRoutes.js uses /application/:id
-
     const { id } = req.params;
-    const applicationId = id;
-
-    console.log(
-      "DELETE APPLICATION:",
-      applicationId
-    );
 
     const application =
-      await Application.findById(applicationId);
+      await Application.findById(id);
 
     if (!application) {
       return res.status(404).json({
@@ -779,13 +910,12 @@ const deleteApplication = async (req, res) => {
       });
     }
 
-    await Application.findByIdAndDelete(
-      applicationId
-    );
+    await Application.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
-      message: "Application deleted successfully",
+      message:
+        "Application deleted successfully",
     });
   } catch (error) {
     console.error(
@@ -795,7 +925,8 @@ const deleteApplication = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Unable to delete application",
+      message:
+        "Unable to delete application",
     });
   }
 };

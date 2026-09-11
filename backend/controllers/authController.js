@@ -1,15 +1,14 @@
-const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
 
 // ======================================================
 // REGISTER USER
 // ======================================================
+
 const registerUser = async (req, res) => {
   try {
-    console.log("========== REGISTER ==========");
-    console.log("REGISTER BODY:", req.body);
-
     const {
       name,
       studentId,
@@ -20,7 +19,10 @@ const registerUser = async (req, res) => {
       semester,
     } = req.body;
 
-    // Validate required fields
+    // -----------------------------
+    // Required fields
+    // -----------------------------
+
     if (
       !name ||
       !studentId ||
@@ -28,55 +30,92 @@ const registerUser = async (req, res) => {
       !password ||
       !college ||
       !branch ||
-      !semester
+      semester === undefined
     ) {
       return res.status(400).json({
         success: false,
-        message: "Please fill all fields",
+        message: "All required fields must be provided",
       });
     }
 
-    // Check email
-    const emailExists = await User.findOne({ email });
+    // -----------------------------
+    // Basic validation
+    // -----------------------------
 
-    if (emailExists) {
+    if (password.length < 6) {
       return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 6 characters long",
+      });
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    const normalizedStudentId =
+      studentId.trim();
+
+    // -----------------------------
+    // Check duplicate email
+    // -----------------------------
+
+    const existingEmail =
+      await User.findOne({
+        email: normalizedEmail,
+      });
+
+    if (existingEmail) {
+      return res.status(409).json({
         success: false,
         message: "Email already registered",
       });
     }
 
-    // Check student ID
-    const studentExists = await User.findOne({ studentId });
+    // -----------------------------
+    // Check duplicate student ID
+    // -----------------------------
 
-    if (studentExists) {
-      return res.status(400).json({
+    const existingStudent =
+      await User.findOne({
+        studentId: normalizedStudentId,
+      });
+
+    if (existingStudent) {
+      return res.status(409).json({
         success: false,
         message: "Student ID already registered",
       });
     }
 
+    // -----------------------------
     // Hash password
-    console.log("Original Password:", password);
-    const hashedPassword = await bcrypt.hash(password, 10);
-console.log("Hashed Password:", hashedPassword);
+    // -----------------------------
+
+    const hashedPassword =
+      await bcrypt.hash(password, 10);
+
+    // -----------------------------
     // Create user
+    // -----------------------------
+
     const user = await User.create({
-      name,
-      studentId,
-      email,
+      name: name.trim(),
+      studentId: normalizedStudentId,
+      email: normalizedEmail,
       password: hashedPassword,
-      college,
-      branch,
+      college: college.trim(),
+      branch: branch.trim(),
       semester: Number(semester),
     });
 
-    console.log("USER CREATED:");
-    console.log(user);
+    // -----------------------------
+    // Response
+    // -----------------------------
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Registration Successful",
+      message: "Registration successful",
       user: {
         id: user._id,
         name: user.name,
@@ -85,67 +124,102 @@ console.log("Hashed Password:", hashedPassword);
         college: user.college,
         branch: user.branch,
         semester: user.semester,
+        role: user.role,
       },
     });
 
   } catch (error) {
-    console.error("REGISTER ERROR:", error);
+    console.error(
+      "Registration Error:",
+      error.message
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Registration failed",
     });
   }
 };
 
+
 // ======================================================
 // LOGIN USER
 // ======================================================
+
 const loginUser = async (req, res) => {
   try {
-    console.log("========== LOGIN ==========");
-    console.log(req.body);
+    const {
+      studentId,
+      password,
+    } = req.body;
 
-    const { studentId, password } = req.body;
+    // -----------------------------
+    // Validate input
+    // -----------------------------
 
     if (!studentId || !password) {
       return res.status(400).json({
         success: false,
-        message: "Student ID and Password are required",
+        message:
+          "Student ID and password are required",
       });
     }
 
-    const user = await User.findOne({ studentId });
+    // -----------------------------
+    // Find user
+    // -----------------------------
 
-    console.log("User Found:", user);
+    const user = await User.findOne({
+      studentId: studentId.trim(),
+    });
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(401).json({
         success: false,
-        message: "User not found",
+        message: "Invalid student ID or password",
       });
     }
 
-    console.log("Entered Password:", password);
-    console.log("Stored Password:", user.password);
+    // -----------------------------
+    // Compare password
+    // -----------------------------
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
-
-    console.log("Password Match:", isMatch);
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid password",
+        message: "Invalid student ID or password",
       });
     }
 
+    // -----------------------------
+    // Check JWT secret
+    // -----------------------------
+
+    if (!process.env.JWT_SECRET) {
+      console.error(
+        "JWT_SECRET is not configured"
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Server authentication configuration error",
+      });
+    }
+
+    // -----------------------------
+    // Create JWT
+    // -----------------------------
+
     const token = jwt.sign(
       {
-        id: user._id,
+        id: user._id.toString(),
         role: user.role,
       },
       process.env.JWT_SECRET,
@@ -154,9 +228,14 @@ const loginUser = async (req, res) => {
       }
     );
 
-    res.status(200).json({
+    // -----------------------------
+    // Send safe user data
+    // NEVER send password
+    // -----------------------------
+
+    return res.status(200).json({
       success: true,
-      message: "Login Successful",
+      message: "Login successful",
       token,
       user: {
         id: user._id,
@@ -167,20 +246,26 @@ const loginUser = async (req, res) => {
         branch: user.branch,
         semester: user.semester,
         role: user.role,
-        profileImage: user.profileImage,
-        resume: user.resume,
+        profileImage:
+          user.profileImage || null,
+        resume:
+          user.resume || null,
       },
     });
 
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
+    console.error(
+      "Login Error:",
+      error.message
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Login failed",
     });
   }
 };
+
 
 module.exports = {
   registerUser,

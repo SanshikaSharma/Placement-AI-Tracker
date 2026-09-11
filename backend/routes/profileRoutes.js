@@ -8,19 +8,33 @@ const {
   updateProfile,
 } = require("../controllers/profileController");
 
-// ==========================
-// IMPORTANT: STATIC ROUTES FIRST
-// ==========================
-router.get("/all", getAllProfiles);
+const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
+const studentOwnershipMiddleware = require(
+  "../middleware/studentOwnershipMiddleware"
+);
 
-// ==========================
-// SINGLE PROFILE
-// ==========================
-router.get("/:id", getProfile);
+// All profiles → Admin only
+router.get(
+  "/all",
+  adminMiddleware,
+  getAllProfiles
+);
 
-// ==========================
-// UPDATE PROFILE
-// ==========================
-router.put("/:id", updateProfile);
+// Own profile
+router.get(
+  "/:id",
+  authMiddleware,
+  studentOwnershipMiddleware,
+  getProfile
+);
+
+// Update own profile
+router.put(
+  "/:id",
+  authMiddleware,
+  studentOwnershipMiddleware,
+  updateProfile
+);
 
 module.exports = router;

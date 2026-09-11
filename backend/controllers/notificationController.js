@@ -1,28 +1,30 @@
+const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 
 // =====================================================
 // GET MY NOTIFICATIONS
 // =====================================================
 
-const getMyNotifications = async (
-  req,
-  res
-) => {
+const getMyNotifications = async (req, res) => {
   try {
     const { studentId } = req.params;
 
-    const notifications =
-      await Notification.find({
-        student: studentId,
-      }).sort({
-        createdAt: -1,
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Student ID",
       });
+    }
 
-    const unreadCount =
-      notifications.filter(
-        (notification) =>
-          !notification.isRead
-      ).length;
+    const notifications = await Notification.find({
+      student: studentId,
+    }).sort({
+      createdAt: -1,
+    });
+
+    const unreadCount = notifications.filter(
+      (notification) => !notification.isRead
+    ).length;
 
     return res.status(200).json({
       success: true,
@@ -33,13 +35,12 @@ const getMyNotifications = async (
   } catch (error) {
     console.error(
       "Get Notifications Error:",
-      error
+      error.message
     );
 
     return res.status(500).json({
       success: false,
-      message:
-        "Unable to load notifications",
+      message: "Unable to load notifications",
     });
   }
 };
@@ -48,10 +49,7 @@ const getMyNotifications = async (
 // CREATE NOTIFICATION
 // =====================================================
 
-const createNotification = async (
-  req,
-  res
-) => {
+const createNotification = async (req, res) => {
   try {
     const {
       student,
@@ -60,11 +58,7 @@ const createNotification = async (
       type,
     } = req.body;
 
-    if (
-      !student ||
-      !title ||
-      !message
-    ) {
+    if (!student || !title || !message) {
       return res.status(400).json({
         success: false,
         message:
@@ -72,13 +66,19 @@ const createNotification = async (
       });
     }
 
-    const notification =
-      await Notification.create({
-        student,
-        title,
-        message,
-        type: type || "System",
+    if (!mongoose.Types.ObjectId.isValid(student)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Student ID",
       });
+    }
+
+    const notification = await Notification.create({
+      student,
+      title: title.trim(),
+      message: message.trim(),
+      type: type || "System",
+    });
 
     return res.status(201).json({
       success: true,
@@ -89,13 +89,12 @@ const createNotification = async (
   } catch (error) {
     console.error(
       "Create Notification Error:",
-      error
+      error.message
     );
 
     return res.status(500).json({
       success: false,
-      message:
-        "Unable to create notification",
+      message: "Unable to create notification",
     });
   }
 };
@@ -104,33 +103,50 @@ const createNotification = async (
 // MARK ONE AS READ
 // =====================================================
 
-const markAsRead = async (
-  req,
-  res
-) => {
+const markAsRead = async (req, res) => {
   try {
-    const {
-      notificationId,
-    } = req.params;
+    const { notificationId } = req.params;
+
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        notificationId
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Notification ID",
+      });
+    }
 
     const notification =
-      await Notification.findByIdAndUpdate(
-        notificationId,
-        {
-          isRead: true,
-        },
-        {
-          new: true,
-        }
+      await Notification.findById(
+        notificationId
       );
 
     if (!notification) {
       return res.status(404).json({
         success: false,
-        message:
-          "Notification not found",
+        message: "Notification not found",
       });
     }
+
+    // Admin is allowed to access notifications.
+    // Students can only access their own notification.
+    if (
+      req.user.role !== "admin" &&
+      String(notification.student) !==
+        String(req.user.id)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Access denied. You can only update your own notifications.",
+      });
+    }
+
+    notification.isRead = true;
+
+    await notification.save();
 
     return res.status(200).json({
       success: true,
@@ -141,7 +157,7 @@ const markAsRead = async (
   } catch (error) {
     console.error(
       "Mark Notification Error:",
-      error
+      error.message
     );
 
     return res.status(500).json({
@@ -156,12 +172,16 @@ const markAsRead = async (
 // MARK ALL AS READ
 // =====================================================
 
-const markAllAsRead = async (
-  req,
-  res
-) => {
+const markAllAsRead = async (req, res) => {
   try {
     const { studentId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Student ID",
+      });
+    }
 
     await Notification.updateMany(
       {
@@ -183,7 +203,7 @@ const markAllAsRead = async (
   } catch (error) {
     console.error(
       "Mark All Notifications Error:",
-      error
+      error.message
     );
 
     return res.status(500).json({

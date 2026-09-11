@@ -6,6 +6,16 @@ const {
   analyzeUserResume,
 } = require("../controllers/aiResumeController");
 
-router.get("/analyze/:userId", analyzeUserResume);
+const authMiddleware = require("../middleware/authMiddleware");
+const studentOwnershipMiddleware = require(
+  "../middleware/studentOwnershipMiddleware"
+);
+
+router.get(
+  "/analyze/:userId",
+  authMiddleware,
+  studentOwnershipMiddleware,
+  analyzeUserResume
+);
 
 module.exports = router;

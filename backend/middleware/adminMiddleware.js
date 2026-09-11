@@ -5,18 +5,53 @@ const adminMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const token = authHeader.split(" ")[1];
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authorization format",
+      });
+    }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const token = authHeader.slice(7).trim();
 
-    const user = await User.findById(decoded.id).select("-password");
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Token is missing",
+      });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not configured");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server authentication configuration error",
+      });
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token payload",
+      });
+    }
+
+    const user = await User.findById(decoded.id).select(
+      "-password"
+    );
 
     if (!user) {
       return res.status(401).json({
@@ -36,7 +71,12 @@ const adminMiddleware = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("ADMIN AUTH ERROR:", error);
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+      });
+    }
 
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
@@ -45,12 +85,10 @@ const adminMiddleware = async (req, res, next) => {
       });
     }
 
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Token expired",
-      });
-    }
+    console.error(
+      "Admin Authentication Error:",
+      error.message
+    );
 
     return res.status(500).json({
       success: false,

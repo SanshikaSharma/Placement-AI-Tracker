@@ -1,7 +1,10 @@
 const express = require("express");
 
 const router = express.Router();
-
+const authMiddleware = require("../middleware/authMiddleware");
+const studentOwnershipMiddleware = require(
+  "../middleware/studentOwnershipMiddleware"
+);
 const {
   uploadResume,
   getResume,
@@ -29,6 +32,8 @@ router.get("/test", (req, res) => {
 
 router.post(
   "/upload",
+  authMiddleware,
+  studentOwnershipMiddleware,
   uploadResume
 );
 
@@ -39,9 +44,10 @@ router.post(
 
 router.get(
   "/download/:userId",
+  authMiddleware,
+  studentOwnershipMiddleware,
   downloadResume
 );
-
 // ==========================================
 // AI RESUME ANALYSIS
 // IMPORTANT: BEFORE /:userId
@@ -49,6 +55,8 @@ router.get(
 
 router.get(
   "/analyze/:studentId",
+  authMiddleware,
+  studentOwnershipMiddleware,
   analyzeResume
 );
 
@@ -59,6 +67,8 @@ router.get(
 
 router.get(
   "/:userId",
+  authMiddleware,
+  studentOwnershipMiddleware,
   getResume
 );
 
@@ -69,6 +79,8 @@ router.get(
 
 router.delete(
   "/:userId",
+  authMiddleware,
+  studentOwnershipMiddleware,
   deleteResume
 );
 
