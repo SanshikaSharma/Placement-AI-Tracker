@@ -24,6 +24,7 @@ import CompanyDetails from "./pages/Companies/CompanyDetails";
 import Recommendations from "./pages/Recommendations/Recommendations";
 import NotificationsPage from "./pages/Notifications/NotificationsPage";
 import AIInterviewPage from "./pages/AIInterview/AIInterviewPage";
+import CareerAnalyticsPage from "./pages/CareerAnalytics/CareerAnalyticsPage";
 // Admin Pages
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ManageCompanies from "./pages/Admin/ManageCompanies";
@@ -290,6 +291,14 @@ function App() {
 <Route
   path="/ai-interview"
   element={<AIInterviewPage />}
+/>
+<Route
+  path="/career-analytics"
+  element={
+    <ProtectedRoute>
+      <CareerAnalyticsPage />
+    </ProtectedRoute>
+  }
 />
       </Routes>
     </Router>

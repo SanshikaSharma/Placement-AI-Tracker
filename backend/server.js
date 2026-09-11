@@ -24,6 +24,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const interviewRoutes = require("./routes/interviewRoutes");
+const careerAnalyticsRoutes = require("./routes/careerAnalyticsRoutes");
 
 connectDB();
 
@@ -63,6 +64,10 @@ app.use(
 );
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/interview", interviewRoutes);
+app.use(
+  "/api/career-analytics",
+  careerAnalyticsRoutes
+);
 
 const PORT = process.env.PORT || 5001;
 

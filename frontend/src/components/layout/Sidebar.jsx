@@ -121,6 +121,11 @@ function Sidebar() {
   name: "AI Interview",
   path: "/ai-interview",
   icon: "🤖",
+},
+{
+  name: "Career Analytics",
+  path: "/career-analytics",
+  icon: "📊",
 }
   ];
 
