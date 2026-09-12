@@ -7,12 +7,17 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 const {
   getDashboardStats,
   getAnalytics,
+
   getAllStudents,
   getStudentDetails,
   getStudentResume,
   deleteStudent,
+
   getAllCompanies,
+  addCompany,
+  updateCompany,
   deleteCompany,
+
   getAllApplications,
   updateApplicationStatus,
   deleteApplication,
@@ -24,39 +29,80 @@ const {
 
 router.use(adminMiddleware);
 
+
 // ======================================================
 // ADMIN DASHBOARD
 // ======================================================
 
-router.get("/dashboard", getDashboardStats);
+router.get(
+  "/dashboard",
+  getDashboardStats
+);
 
-router.get("/analytics", getAnalytics);
+router.get(
+  "/analytics",
+  getAnalytics
+);
+
 
 // ======================================================
 // STUDENTS
 // ======================================================
 
-router.get("/students", getAllStudents);
+router.get(
+  "/students",
+  getAllStudents
+);
 
-router.get("/student/:id", getStudentDetails);
+router.get(
+  "/student/:id",
+  getStudentDetails
+);
 
-router.get("/student/:id/resume", getStudentResume);
+router.get(
+  "/student/:id/resume",
+  getStudentResume
+);
 
-router.delete("/student/:id", deleteStudent);
+router.delete(
+  "/student/:id",
+  deleteStudent
+);
+
 
 // ======================================================
 // COMPANIES
 // ======================================================
 
-router.get("/companies", getAllCompanies);
+router.get(
+  "/companies",
+  getAllCompanies
+);
 
-router.delete("/company/:id", deleteCompany);
+router.post(
+  "/company",
+  addCompany
+);
+
+router.put(
+  "/company/:id",
+  updateCompany
+);
+
+router.delete(
+  "/company/:id",
+  deleteCompany
+);
+
 
 // ======================================================
 // APPLICATIONS
 // ======================================================
 
-router.get("/applications", getAllApplications);
+router.get(
+  "/applications",
+  getAllApplications
+);
 
 router.put(
   "/application/:id",
@@ -67,6 +113,7 @@ router.delete(
   "/application/:id",
   deleteApplication
 );
+
 
 // ======================================================
 // EXPORT ROUTER

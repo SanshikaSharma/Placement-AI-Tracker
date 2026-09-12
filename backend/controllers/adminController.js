@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const User = require("../models/User");
 const Company = require("../models/Company");
 const Application = require("../models/Application");
@@ -6,27 +8,44 @@ const Notification = require("../models/Notification");
 const { sendEmail } = require("../utils/emailService");
 
 // ======================================================
+// HELPERS
+// ======================================================
+
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
+};
+
+const cleanString = (value) => {
+  return typeof value === "string"
+    ? value.trim()
+    : "";
+};
+
+const cleanStringArray = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+};
+
+// ======================================================
 // ADMIN DASHBOARD
 // ======================================================
 
 const getDashboardStats = async (req, res) => {
   try {
-    // --------------------------------------------------
-    // BASIC COUNTS
-    // --------------------------------------------------
-
     const totalStudents = await User.countDocuments({
       role: "student",
     });
 
-    const totalCompanies = await Company.countDocuments();
+    const totalCompanies =
+      await Company.countDocuments();
 
     const totalApplications =
       await Application.countDocuments();
-
-    // --------------------------------------------------
-    // APPLICATION STATUS COUNTS
-    // --------------------------------------------------
 
     const selectedApplications =
       await Application.countDocuments({
@@ -63,10 +82,6 @@ const getDashboardStats = async (req, res) => {
         status: "Rejected",
       });
 
-    // --------------------------------------------------
-    // RESUME COUNT
-    // --------------------------------------------------
-
     const resumeUploaded =
       await User.countDocuments({
         role: "student",
@@ -75,10 +90,6 @@ const getDashboardStats = async (req, res) => {
           $ne: "",
         },
       });
-
-    // --------------------------------------------------
-    // PLACEMENT PERCENTAGE
-    // --------------------------------------------------
 
     const placementPercentage =
       totalStudents > 0
@@ -90,10 +101,6 @@ const getDashboardStats = async (req, res) => {
             ).toFixed(1)
           )
         : 0;
-
-    // --------------------------------------------------
-    // RECENT APPLICATIONS
-    // --------------------------------------------------
 
     const recentApplications =
       await Application.find()
@@ -107,10 +114,6 @@ const getDashboardStats = async (req, res) => {
         })
         .limit(5);
 
-    // --------------------------------------------------
-    // UPCOMING COMPANIES
-    // --------------------------------------------------
-
     const upcomingCompanies =
       await Company.find()
         .sort({
@@ -118,10 +121,6 @@ const getDashboardStats = async (req, res) => {
           createdAt: -1,
         })
         .limit(5);
-
-    // --------------------------------------------------
-    // RESPONSE
-    // --------------------------------------------------
 
     res.status(200).json({
       success: true,
@@ -148,7 +147,6 @@ const getDashboardStats = async (req, res) => {
 
       upcomingCompanies,
 
-      // Additional statistics
       applicationStats: {
         applied: appliedApplications,
         pending: pendingApplications,
@@ -166,7 +164,7 @@ const getDashboardStats = async (req, res) => {
   } catch (error) {
     console.error(
       "Dashboard Stats Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -247,7 +245,7 @@ const getAnalytics = async (req, res) => {
   } catch (error) {
     console.error(
       "Analytics Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -279,7 +277,7 @@ const getAllStudents = async (req, res) => {
   } catch (error) {
     console.error(
       "Get Students Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -296,6 +294,13 @@ const getAllStudents = async (req, res) => {
 const getStudentDetails = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid student ID",
+      });
+    }
 
     const student = await User.findOne({
       _id: id,
@@ -326,7 +331,7 @@ const getStudentDetails = async (req, res) => {
   } catch (error) {
     console.error(
       "Student Details Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -343,6 +348,13 @@ const getStudentDetails = async (req, res) => {
 const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid student ID",
+      });
+    }
 
     const student = await User.findOne({
       _id: id,
@@ -373,7 +385,7 @@ const deleteStudent = async (req, res) => {
   } catch (error) {
     console.error(
       "Delete Student Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -402,12 +414,543 @@ const getAllCompanies = async (req, res) => {
   } catch (error) {
     console.error(
       "Get Companies Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
       success: false,
       message: "Unable to load companies",
+    });
+  }
+};
+
+// ======================================================
+// ADD COMPANY
+// ======================================================
+
+const addCompany = async (req, res) => {
+  try {
+    const {
+      companyName,
+      role,
+      package: packageValue,
+      location,
+      jobType,
+      eligibleBranches,
+      minimumCGPA,
+      skillsRequired,
+      eligibility,
+      description,
+      applyLink,
+      deadline,
+      status,
+    } = req.body;
+
+    // --------------------------------------------------
+    // REQUIRED FIELDS
+    // --------------------------------------------------
+
+    const cleanedCompanyName =
+      cleanString(companyName);
+
+    const cleanedRole =
+      cleanString(role);
+
+    const cleanedPackage =
+      cleanString(packageValue);
+
+    const cleanedLocation =
+      cleanString(location);
+
+    const cleanedEligibility =
+      cleanString(eligibility);
+
+    if (!cleanedCompanyName) {
+      return res.status(400).json({
+        success: false,
+        message: "Company name is required",
+      });
+    }
+
+    if (!cleanedRole) {
+      return res.status(400).json({
+        success: false,
+        message: "Role is required",
+      });
+    }
+
+    if (!cleanedPackage) {
+      return res.status(400).json({
+        success: false,
+        message: "Package is required",
+      });
+    }
+
+    if (!cleanedLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Location is required",
+      });
+    }
+
+    if (!cleanedEligibility) {
+      return res.status(400).json({
+        success: false,
+        message: "Eligibility is required",
+      });
+    }
+
+    if (!deadline) {
+      return res.status(400).json({
+        success: false,
+        message: "Deadline is required",
+      });
+    }
+
+    // --------------------------------------------------
+    // VALIDATE CGPA
+    // --------------------------------------------------
+
+    const parsedCGPA =
+      minimumCGPA === undefined ||
+      minimumCGPA === null ||
+      minimumCGPA === ""
+        ? 0
+        : Number(minimumCGPA);
+
+    if (
+      Number.isNaN(parsedCGPA) ||
+      parsedCGPA < 0 ||
+      parsedCGPA > 10
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Minimum CGPA must be between 0 and 10",
+      });
+    }
+
+    // --------------------------------------------------
+    // VALIDATE DEADLINE
+    // --------------------------------------------------
+
+    const parsedDeadline =
+      new Date(deadline);
+
+    if (Number.isNaN(parsedDeadline.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid deadline",
+      });
+    }
+
+    // --------------------------------------------------
+    // VALIDATE STATUS
+    // --------------------------------------------------
+
+    const allowedStatuses = [
+      "Open",
+      "Closed",
+    ];
+
+    const finalStatus =
+      status || "Open";
+
+    if (!allowedStatuses.includes(finalStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid company status",
+      });
+    }
+
+    // --------------------------------------------------
+    // CREATE COMPANY
+    // --------------------------------------------------
+
+    const company = await Company.create({
+      companyName: cleanedCompanyName,
+      role: cleanedRole,
+      package: cleanedPackage,
+      location: cleanedLocation,
+
+      jobType:
+        cleanString(jobType) ||
+        "Full Time",
+
+      eligibleBranches:
+        cleanStringArray(
+          eligibleBranches
+        ),
+
+      minimumCGPA: parsedCGPA,
+
+      skillsRequired:
+        cleanStringArray(
+          skillsRequired
+        ),
+
+      eligibility:
+        cleanedEligibility,
+
+      description:
+        cleanString(description),
+
+      applyLink:
+        cleanString(applyLink),
+
+      deadline:
+        parsedDeadline,
+
+      status:
+        finalStatus,
+    });
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Company added successfully",
+      company,
+    });
+  } catch (error) {
+    console.error(
+      "Add Company Error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to add company",
+    });
+  }
+};
+
+// ======================================================
+// UPDATE COMPANY
+// ======================================================
+
+const updateCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid company ID",
+      });
+    }
+
+    const company =
+      await Company.findById(id);
+
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: "Company not found",
+      });
+    }
+
+    // --------------------------------------------------
+    // WHITELIST FIELDS
+    // --------------------------------------------------
+
+    const allowedFields = [
+      "companyName",
+      "role",
+      "package",
+      "location",
+      "jobType",
+      "eligibleBranches",
+      "minimumCGPA",
+      "skillsRequired",
+      "eligibility",
+      "description",
+      "applyLink",
+      "deadline",
+      "status",
+    ];
+
+    const updateData = {};
+
+    for (const field of allowedFields) {
+      if (
+        Object.prototype.hasOwnProperty.call(
+          req.body,
+          field
+        )
+      ) {
+        updateData[field] =
+          req.body[field];
+      }
+    }
+
+    // --------------------------------------------------
+    // STRING FIELDS
+    // --------------------------------------------------
+
+    if (
+      updateData.companyName !==
+      undefined
+    ) {
+      updateData.companyName =
+        cleanString(
+          updateData.companyName
+        );
+
+      if (!updateData.companyName) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Company name cannot be empty",
+        });
+      }
+    }
+
+    if (
+      updateData.role !== undefined
+    ) {
+      updateData.role =
+        cleanString(
+          updateData.role
+        );
+
+      if (!updateData.role) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Role cannot be empty",
+        });
+      }
+    }
+
+    if (
+      updateData.package !==
+      undefined
+    ) {
+      updateData.package =
+        cleanString(
+          updateData.package
+        );
+
+      if (!updateData.package) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Package cannot be empty",
+        });
+      }
+    }
+
+    if (
+      updateData.location !==
+      undefined
+    ) {
+      updateData.location =
+        cleanString(
+          updateData.location
+        );
+
+      if (!updateData.location) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Location cannot be empty",
+        });
+      }
+    }
+
+    if (
+      updateData.jobType !==
+      undefined
+    ) {
+      updateData.jobType =
+        cleanString(
+          updateData.jobType
+        );
+
+      if (!updateData.jobType) {
+        updateData.jobType =
+          "Full Time";
+      }
+    }
+
+    if (
+      updateData.eligibility !==
+      undefined
+    ) {
+      updateData.eligibility =
+        cleanString(
+          updateData.eligibility
+        );
+
+      if (!updateData.eligibility) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Eligibility cannot be empty",
+        });
+      }
+    }
+
+    if (
+      updateData.description !==
+      undefined
+    ) {
+      updateData.description =
+        cleanString(
+          updateData.description
+        );
+    }
+
+    if (
+      updateData.applyLink !==
+      undefined
+    ) {
+      updateData.applyLink =
+        cleanString(
+          updateData.applyLink
+        );
+    }
+
+    // --------------------------------------------------
+    // ARRAYS
+    // --------------------------------------------------
+
+    if (
+      updateData.eligibleBranches !==
+      undefined
+    ) {
+      updateData.eligibleBranches =
+        cleanStringArray(
+          updateData.eligibleBranches
+        );
+    }
+
+    if (
+      updateData.skillsRequired !==
+      undefined
+    ) {
+      updateData.skillsRequired =
+        cleanStringArray(
+          updateData.skillsRequired
+        );
+    }
+
+    // --------------------------------------------------
+    // CGPA
+    // --------------------------------------------------
+
+    if (
+      updateData.minimumCGPA !==
+      undefined
+    ) {
+      const parsedCGPA =
+        Number(
+          updateData.minimumCGPA
+        );
+
+      if (
+        Number.isNaN(parsedCGPA) ||
+        parsedCGPA < 0 ||
+        parsedCGPA > 10
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Minimum CGPA must be between 0 and 10",
+        });
+      }
+
+      updateData.minimumCGPA =
+        parsedCGPA;
+    }
+
+    // --------------------------------------------------
+    // DEADLINE
+    // --------------------------------------------------
+
+    if (
+      updateData.deadline !==
+      undefined
+    ) {
+      const parsedDeadline =
+        new Date(
+          updateData.deadline
+        );
+
+      if (
+        Number.isNaN(
+          parsedDeadline.getTime()
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid deadline",
+        });
+      }
+
+      updateData.deadline =
+        parsedDeadline;
+    }
+
+    // --------------------------------------------------
+    // STATUS
+    // --------------------------------------------------
+
+    if (
+      updateData.status !==
+      undefined
+    ) {
+      const allowedStatuses = [
+        "Open",
+        "Closed",
+      ];
+
+      if (
+        !allowedStatuses.includes(
+          updateData.status
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid company status",
+        });
+      }
+    }
+
+    // --------------------------------------------------
+    // UPDATE
+    // --------------------------------------------------
+
+    const updatedCompany =
+      await Company.findByIdAndUpdate(
+        id,
+        {
+          $set: updateData,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Company updated successfully",
+      company: updatedCompany,
+    });
+  } catch (error) {
+    console.error(
+      "Update Company Error:",
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Unable to update company",
     });
   }
 };
@@ -419,6 +962,13 @@ const getAllCompanies = async (req, res) => {
 const deleteCompany = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid company ID",
+      });
+    }
 
     const company =
       await Company.findById(id);
@@ -438,17 +988,19 @@ const deleteCompany = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Company deleted successfully",
+      message:
+        "Company deleted successfully",
     });
   } catch (error) {
     console.error(
       "Delete Company Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
       success: false,
-      message: "Unable to delete company",
+      message:
+        "Unable to delete company",
     });
   }
 };
@@ -457,7 +1009,10 @@ const deleteCompany = async (req, res) => {
 // GET ALL APPLICATIONS
 // ======================================================
 
-const getAllApplications = async (req, res) => {
+const getAllApplications = async (
+  req,
+  res
+) => {
   try {
     const applications =
       await Application.find()
@@ -478,12 +1033,13 @@ const getAllApplications = async (req, res) => {
   } catch (error) {
     console.error(
       "Get Applications Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
       success: false,
-      message: "Unable to load applications",
+      message:
+        "Unable to load applications",
     });
   }
 };
@@ -498,19 +1054,16 @@ const updateApplicationStatus = async (
 ) => {
   try {
     const { id } = req.params;
-    const applicationId = id;
 
     const { status } = req.body;
 
-    console.log(
-      "UPDATE APPLICATION:",
-      applicationId,
-      status
-    );
-
-    // --------------------------------------------------
-    // VALIDATE STATUS
-    // --------------------------------------------------
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid application ID",
+      });
+    }
 
     const allowedStatuses = [
       "Applied",
@@ -525,64 +1078,53 @@ const updateApplicationStatus = async (
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid application status",
+        message:
+          "Invalid application status",
       });
     }
 
-    // --------------------------------------------------
-    // FIND APPLICATION
-    // --------------------------------------------------
-
     const application =
-      await Application.findById(
-        applicationId
-      );
+      await Application.findById(id);
 
     if (!application) {
       return res.status(404).json({
         success: false,
-        message: "Application not found",
+        message:
+          "Application not found",
       });
     }
-
-    // --------------------------------------------------
-    // UPDATE STATUS
-    // --------------------------------------------------
 
     application.status = status;
 
     await application.save();
 
-    // --------------------------------------------------
-    // FIND STUDENT
-    // --------------------------------------------------
-
-    const student = await User.findById(
-      application.student
-    );
+    const student =
+      await User.findById(
+        application.student
+      );
 
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: "Student not found",
+        message:
+          "Student not found",
       });
     }
-
-    // --------------------------------------------------
-    // FIND COMPANY
-    // --------------------------------------------------
 
     const company =
       await Company.findById(
         application.company
       );
 
-    const companyName = company
-      ? company.name
-      : "the company";
+    // IMPORTANT:
+    // Company model uses companyName,
+    // not name.
+    const companyName =
+      company?.companyName ||
+      "the company";
 
     // --------------------------------------------------
-    // DEFAULT NOTIFICATION / EMAIL
+    // DEFAULT MESSAGE
     // --------------------------------------------------
 
     let notificationTitle =
@@ -603,7 +1145,9 @@ const updateApplicationStatus = async (
     let emailHtml = `
       <h2>Application Status Updated</h2>
 
-      <p>Hello ${student.name || "Student"},</p>
+      <p>Hello ${
+        student.name || "Student"
+      },</p>
 
       <p>
         Your application for
@@ -649,7 +1193,9 @@ const updateApplicationStatus = async (
       emailHtml = `
         <h2>Interview Update</h2>
 
-        <p>Hello ${student.name || "Student"},</p>
+        <p>Hello ${
+          student.name || "Student"
+        },</p>
 
         <p>
           Your application for
@@ -695,7 +1241,9 @@ const updateApplicationStatus = async (
       emailHtml = `
         <h2>Congratulations! 🎉</h2>
 
-        <p>Hello ${student.name || "Student"},</p>
+        <p>Hello ${
+          student.name || "Student"
+        },</p>
 
         <p>
           We are happy to inform you that you have been
@@ -744,7 +1292,9 @@ const updateApplicationStatus = async (
       emailHtml = `
         <h2>Application Status Update</h2>
 
-        <p>Hello ${student.name || "Student"},</p>
+        <p>Hello ${
+          student.name || "Student"
+        },</p>
 
         <p>
           Your application for
@@ -790,13 +1340,11 @@ const updateApplicationStatus = async (
       });
 
     // --------------------------------------------------
-    // GET UPDATED APPLICATION
+    // UPDATED APPLICATION
     // --------------------------------------------------
 
     const updatedApplication =
-      await Application.findById(
-        applicationId
-      )
+      await Application.findById(id)
         .populate(
           "student",
           "-password"
@@ -809,6 +1357,7 @@ const updateApplicationStatus = async (
 
     res.status(200).json({
       success: true,
+
       message:
         "Application status updated successfully",
 
@@ -828,14 +1377,13 @@ const updateApplicationStatus = async (
   } catch (error) {
     console.error(
       "Update Application Status Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
       success: false,
       message:
         "Unable to update application status",
-      error: error.message,
     });
   }
 };
@@ -844,9 +1392,19 @@ const updateApplicationStatus = async (
 // GET STUDENT RESUME
 // ======================================================
 
-const getStudentResume = async (req, res) => {
+const getStudentResume = async (
+  req,
+  res
+) => {
   try {
     const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid student ID",
+      });
+    }
 
     const student = await User.findOne({
       _id: id,
@@ -868,7 +1426,8 @@ const getStudentResume = async (req, res) => {
     ) {
       return res.status(404).json({
         success: false,
-        message: "Resume not uploaded",
+        message:
+          "Resume not uploaded",
       });
     }
 
@@ -879,7 +1438,7 @@ const getStudentResume = async (req, res) => {
   } catch (error) {
     console.error(
       "Get Resume Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -900,13 +1459,22 @@ const deleteApplication = async (
   try {
     const { id } = req.params;
 
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid application ID",
+      });
+    }
+
     const application =
       await Application.findById(id);
 
     if (!application) {
       return res.status(404).json({
         success: false,
-        message: "Application not found",
+        message:
+          "Application not found",
       });
     }
 
@@ -920,7 +1488,7 @@ const deleteApplication = async (
   } catch (error) {
     console.error(
       "Delete Application Error:",
-      error
+      error.message
     );
 
     res.status(500).json({
@@ -938,11 +1506,16 @@ const deleteApplication = async (
 module.exports = {
   getDashboardStats,
   getAnalytics,
+
   getAllStudents,
   getStudentDetails,
   deleteStudent,
+
   getAllCompanies,
+  addCompany,
+  updateCompany,
   deleteCompany,
+
   getAllApplications,
   updateApplicationStatus,
   getStudentResume,

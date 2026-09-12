@@ -1,10 +1,13 @@
 const express = require("express");
 
 const router = express.Router();
+
 const authMiddleware = require("../middleware/authMiddleware");
+
 const studentOwnershipMiddleware = require(
   "../middleware/studentOwnershipMiddleware"
 );
+
 const {
   uploadResume,
   getResume,
@@ -15,7 +18,6 @@ const {
 
 // ==========================================
 // TEST
-// GET /api/resume/test
 // ==========================================
 
 router.get("/test", (req, res) => {
@@ -27,19 +29,20 @@ router.get("/test", (req, res) => {
 
 // ==========================================
 // UPLOAD RESUME
-// POST /api/resume/upload
 // ==========================================
+// IMPORTANT:
+// Do NOT use studentOwnershipMiddleware here.
+// Multer/FormData is parsed inside resumeController.
+// The controller uses req.user.id from JWT.
 
 router.post(
   "/upload",
   authMiddleware,
-  studentOwnershipMiddleware,
   uploadResume
 );
 
 // ==========================================
 // DOWNLOAD RESUME
-// IMPORTANT: BEFORE /:userId
 // ==========================================
 
 router.get(
@@ -48,9 +51,9 @@ router.get(
   studentOwnershipMiddleware,
   downloadResume
 );
+
 // ==========================================
 // AI RESUME ANALYSIS
-// IMPORTANT: BEFORE /:userId
 // ==========================================
 
 router.get(
@@ -62,7 +65,6 @@ router.get(
 
 // ==========================================
 // GET RESUME
-// GET /api/resume/:userId
 // ==========================================
 
 router.get(
@@ -74,7 +76,6 @@ router.get(
 
 // ==========================================
 // DELETE RESUME
-// DELETE /api/resume/:userId
 // ==========================================
 
 router.delete(

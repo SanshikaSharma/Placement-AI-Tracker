@@ -72,6 +72,10 @@ const uploadResume = async (req, res) => {
       res,
       async (error) => {
         try {
+          // ==========================================
+          // MULTER ERROR
+          // ==========================================
+
           if (error) {
             return res.status(400).json({
               success: false,
@@ -79,32 +83,42 @@ const uploadResume = async (req, res) => {
             });
           }
 
+          // ==========================================
+          // FILE CHECK
+          // ==========================================
+
           if (!req.file) {
             return res.status(400).json({
               success: false,
-              message:
-                "Please upload a PDF resume",
+              message: "Please upload a PDF resume",
             });
           }
 
-          const userId =
-            req.body.userId ||
-            req.body.studentId;
+          // ==========================================
+          // GET STUDENT ID FROM JWT
+          // ==========================================
+          // IMPORTANT:
+          // We trust the authenticated JWT instead
+          // of taking the student ID from FormData.
+
+          const userId = req.user?.id;
 
           if (!userId) {
-            // Remove uploaded file
             if (fs.existsSync(req.file.path)) {
               fs.unlinkSync(req.file.path);
             }
 
-            return res.status(400).json({
+            return res.status(401).json({
               success: false,
-              message: "User ID is required",
+              message: "Authentication required",
             });
           }
 
-          const user =
-            await User.findById(userId);
+          // ==========================================
+          // FIND USER
+          // ==========================================
+
+          const user = await User.findById(userId);
 
           if (!user) {
             if (fs.existsSync(req.file.path)) {
@@ -117,40 +131,52 @@ const uploadResume = async (req, res) => {
             });
           }
 
-          // Delete previous resume
+          // ==========================================
+          // DELETE PREVIOUS RESUME
+          // ==========================================
+
           if (
             user.resume &&
             user.resume.filePath &&
-            fs.existsSync(
-              user.resume.filePath
-            )
+            fs.existsSync(user.resume.filePath)
           ) {
-            fs.unlinkSync(
-              user.resume.filePath
-            );
+            fs.unlinkSync(user.resume.filePath);
           }
 
-          // Save new resume information
+          // ==========================================
+          // SAVE NEW RESUME
+          // ==========================================
+
           user.resume = {
             fileName: req.file.filename,
+
             originalName:
               req.file.originalname,
+
             filePath: req.file.path,
+
             uploadedAt: new Date(),
           };
 
           await user.save();
 
+          // ==========================================
+          // SUCCESS
+          // ==========================================
+
           return res.status(200).json({
             success: true,
+
             message:
               "Resume uploaded successfully",
 
             resume: {
               fileName:
                 user.resume.fileName,
+
               originalName:
                 user.resume.originalName,
+
               uploadedAt:
                 user.resume.uploadedAt,
             },
@@ -158,8 +184,11 @@ const uploadResume = async (req, res) => {
         } catch (innerError) {
           console.error(
             "Resume Upload Error:",
-            innerError
+            innerError.message
           );
+
+          // Remove uploaded file if database
+          // operation fails
 
           if (
             req.file &&
@@ -178,10 +207,10 @@ const uploadResume = async (req, res) => {
   } catch (error) {
     console.error(
       "Resume Upload Error:",
-      error
+      error.message
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -197,8 +226,7 @@ const getResume = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user =
-      await User.findById(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -223,10 +251,13 @@ const getResume = async (req, res) => {
       resume: {
         fileName:
           user.resume.fileName,
+
         originalName:
           user.resume.originalName,
+
         filePath:
           user.resume.filePath,
+
         uploadedAt:
           user.resume.uploadedAt,
 
@@ -237,10 +268,10 @@ const getResume = async (req, res) => {
   } catch (error) {
     console.error(
       "Get Resume Error:",
-      error
+      error.message
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -299,10 +330,10 @@ const downloadResume = async (
   } catch (error) {
     console.error(
       "Download Resume Error:",
-      error
+      error.message
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -341,7 +372,10 @@ const deleteResume = async (
       });
     }
 
-    // Delete physical file
+    // ==========================================
+    // DELETE PHYSICAL FILE
+    // ==========================================
+
     if (
       fs.existsSync(
         user.resume.filePath
@@ -352,7 +386,10 @@ const deleteResume = async (
       );
     }
 
-    // Remove resume information
+    // ==========================================
+    // REMOVE RESUME DATA
+    // ==========================================
+
     user.resume = {
       fileName: "",
       originalName: "",
@@ -370,10 +407,10 @@ const deleteResume = async (
   } catch (error) {
     console.error(
       "Delete Resume Error:",
-      error
+      error.message
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -402,10 +439,9 @@ const analyzeResume = async (
       });
     }
 
-    // =================================================
+    // ==========================================
     // ATS SCORE
-    // Total = 100
-    // =================================================
+    // ==========================================
 
     let score = 0;
 
@@ -414,9 +450,9 @@ const analyzeResume = async (
     const suggestions = [];
     const missingSkills = [];
 
-    // =================================================
-    // 1. RESUME UPLOAD - 10 MARKS
-    // =================================================
+    // ==========================================
+    // 1. RESUME UPLOAD - 10
+    // ==========================================
 
     if (user.resume?.fileName) {
       score += 10;
@@ -434,9 +470,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 2. BASIC PROFILE INFORMATION - 10 MARKS
-    // =================================================
+    // ==========================================
+    // 2. BASIC PROFILE - 10
+    // ==========================================
 
     let basicInfoScore = 0;
 
@@ -476,9 +512,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 3. TECHNICAL SKILLS - 20 MARKS
-    // =================================================
+    // ==========================================
+    // 3. TECHNICAL SKILLS - 20
+    // ==========================================
 
     const skills = user.skills || [];
 
@@ -524,11 +560,12 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 4. PROJECTS - 20 MARKS
-    // =================================================
+    // ==========================================
+    // 4. PROJECTS - 20
+    // ==========================================
 
-    const projects = user.projects || [];
+    const projects =
+      user.projects || [];
 
     if (projects.length >= 3) {
       score += 20;
@@ -562,9 +599,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 5. CERTIFICATIONS - 10 MARKS
-    // =================================================
+    // ==========================================
+    // 5. CERTIFICATIONS - 10
+    // ==========================================
 
     const certifications =
       user.certifications || [];
@@ -593,9 +630,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 6. GITHUB - 5 MARKS
-    // =================================================
+    // ==========================================
+    // 6. GITHUB - 5
+    // ==========================================
 
     if (user.github) {
       score += 5;
@@ -609,9 +646,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 7. LINKEDIN - 5 MARKS
-    // =================================================
+    // ==========================================
+    // 7. LINKEDIN - 5
+    // ==========================================
 
     if (user.linkedin) {
       score += 5;
@@ -625,9 +662,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // 8. CGPA / ACADEMIC PERFORMANCE - 10 MARKS
-    // =================================================
+    // ==========================================
+    // 8. CGPA - 10
+    // ==========================================
 
     if (user.cgpa >= 8.5) {
       score += 10;
@@ -655,9 +692,9 @@ const analyzeResume = async (
       );
     }
 
-    // =================================================
-    // FINAL ATS SCORE
-    // =================================================
+    // ==========================================
+    // FINAL SCORE
+    // ==========================================
 
     const atsScore = Math.min(
       Math.max(
@@ -667,9 +704,9 @@ const analyzeResume = async (
       100
     );
 
-    // =================================================
+    // ==========================================
     // COMMON MISSING SKILLS
-    // =================================================
+    // ==========================================
 
     const commonSkills = [
       "React",
@@ -699,9 +736,9 @@ const analyzeResume = async (
       }
     );
 
-    // =================================================
+    // ==========================================
     // RESPONSE
-    // =================================================
+    // ==========================================
 
     return res.status(200).json({
       success: true,
@@ -724,7 +761,7 @@ const analyzeResume = async (
   } catch (error) {
     console.error(
       "Resume Analysis Error:",
-      error
+      error.message
     );
 
     return res.status(500).json({
