@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import WelcomeBanner from "../../components/dashboard/WelcomeBanner";
@@ -26,7 +26,9 @@ function DashboardHome() {
   const [error, setError] = useState("");
 
   const getCurrentUser = () => {
-    const storedUser = sessionStorage.getItem("user");
+    const storedUser =
+      sessionStorage.getItem("user") ||
+      localStorage.getItem("user");
 
     if (!storedUser) {
       return null;
@@ -40,145 +42,186 @@ function DashboardHome() {
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadDashboard = async () => {
-      try {
+  const loadDashboard = useCallback(async (showLoader = false) => {
+    try {
+      if (showLoader) {
         setLoading(true);
-        setError("");
+      }
 
-        const currentUser = getCurrentUser();
+      setError("");
 
-        if (!currentUser) {
-          if (!cancelled) {
-            setError("Please login to continue.");
-          }
-          return;
-        }
+      const currentUser = getCurrentUser();
 
-        const studentId =
-          currentUser.id ||
-          currentUser._id;
+      if (!currentUser) {
+        setUser(null);
+        setError("Please login to continue.");
+        setLoading(false);
+        return;
+      }
 
-        if (!studentId) {
-          if (!cancelled) {
-            setError("Student information not found.");
-          }
-          return;
-        }
+      const studentId =
+        currentUser.id ||
+        currentUser._id ||
+        currentUser.userId;
 
-        if (!cancelled) {
-          setUser(currentUser);
-        }
+      if (!studentId) {
+        setError("Student information not found.");
+        setLoading(false);
+        return;
+      }
 
-        /*
-         * Load dashboard data
-         */
-        try {
-          const dashboardData =
-            await getDashboardData(studentId);
+      setUser(currentUser);
 
-          if (
-            !cancelled &&
-            dashboardData?.success
-          ) {
-            setDashboard(dashboardData);
-          }
-        } catch (dashboardError) {
-          console.error(
-            "Dashboard Data Error:",
-            dashboardError
-          );
-        }
+      /*
+       * Load all dashboard data together.
+       * Promise.allSettled prevents one failed API
+       * from stopping the remaining dashboard data.
+       */
 
-        /*
-         * Load applications
-         */
-        try {
-          const applicationData =
-            await getMyApplications(studentId);
+      const results = await Promise.allSettled([
+        getDashboardData(studentId),
+        getMyApplications(studentId),
+        getMyNotifications(studentId),
+        getCareerAnalytics(studentId),
+      ]);
 
-          if (!cancelled) {
-            if (applicationData?.success) {
-              setApplications(
-                applicationData.applications ||
-                  []
-              );
-            }
-          }
-        } catch (applicationError) {
-          console.error(
-            "Application Data Error:",
-            applicationError
-          );
-        }
+      /*
+       * Dashboard
+       */
+      const dashboardResult = results[0];
 
-        /*
-         * Load notifications
-         */
-        try {
-          const notificationData =
-            await getMyNotifications(studentId);
-
-          if (!cancelled) {
-            if (notificationData?.success) {
-              setNotifications(
-                notificationData
-              );
-            }
-          }
-        } catch (notificationError) {
-          console.error(
-            "Notification Data Error:",
-            notificationError
-          );
-        }
-
-        /*
-         * Load career analytics
-         */
-        try {
-          const analyticsData =
-            await getCareerAnalytics(studentId);
-
-          if (!cancelled) {
-            if (analyticsData?.success) {
-              setCareerAnalytics(
-                analyticsData
-              );
-            }
-          }
-        } catch (analyticsError) {
-          console.error(
-            "Career Analytics Error:",
-            analyticsError
-          );
-        }
-      } catch (error) {
+      if (
+        dashboardResult.status === "fulfilled" &&
+        dashboardResult.value?.success
+      ) {
+        setDashboard(dashboardResult.value);
+      } else if (dashboardResult.status === "rejected") {
         console.error(
-          "Dashboard Error:",
-          error
+          "Dashboard Data Error:",
+          dashboardResult.reason
         );
+      }
 
-        if (!cancelled) {
-          setError(
-            "Unable to load dashboard."
+      /*
+       * Applications
+       */
+      const applicationResult = results[1];
+
+      if (applicationResult.status === "fulfilled") {
+        const applicationData = applicationResult.value;
+
+        if (applicationData?.success) {
+          setApplications(
+            applicationData.applications || []
           );
         }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
+      } else {
+        console.error(
+          "Application Data Error:",
+          applicationResult.reason
+        );
+      }
+
+      /*
+       * Notifications
+       */
+      const notificationResult = results[2];
+
+      if (notificationResult.status === "fulfilled") {
+        const notificationData =
+          notificationResult.value;
+
+        if (notificationData?.success) {
+          setNotifications(notificationData);
         }
+      } else {
+        console.error(
+          "Notification Data Error:",
+          notificationResult.reason
+        );
+      }
+
+      /*
+       * Career Analytics
+       */
+      const analyticsResult = results[3];
+
+      if (analyticsResult.status === "fulfilled") {
+        const analyticsData =
+          analyticsResult.value;
+
+        if (analyticsData?.success) {
+          setCareerAnalytics(analyticsData);
+        }
+      } else {
+        console.error(
+          "Career Analytics Error:",
+          analyticsResult.reason
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Dashboard Error:",
+        error
+      );
+
+      setError("Unable to load dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /*
+   * Initial dashboard load
+   */
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    loadDashboard(true);
+  }, 0);
+
+  return () => {
+    clearTimeout(timer);
+  };
+}, [loadDashboard]);
+
+  /*
+   * Automatically refresh dashboard when:
+   * - user returns to the tab
+   * - browser restores the page
+   */
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadDashboard(false);
       }
     };
 
-    loadDashboard();
+    const handlePageShow = () => {
+      loadDashboard(false);
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    window.addEventListener(
+      "pageshow",
+      handlePageShow
+    );
 
     return () => {
-      cancelled = true;
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+      window.removeEventListener(
+        "pageshow",
+        handlePageShow
+      );
     };
-  }, []);
+  }, [loadDashboard]);
 
   if (loading) {
     return (
@@ -200,7 +243,6 @@ function DashboardHome() {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-md p-8 text-center max-w-md w-full">
-
           <div className="text-5xl mb-4">
             ⚠️
           </div>
@@ -237,18 +279,13 @@ function DashboardHome() {
     dashboard?.interviewCount ?? 0;
 
   const profileProgress =
-    dashboard?.profileProgress ??
-    0;
+    dashboard?.profileProgress ?? 0;
 
   const resumeUploaded =
-    Boolean(
-      dashboard?.resumeUploaded
-    );
+    Boolean(dashboard?.resumeUploaded);
 
   const resumeAnalyzed =
-    Boolean(
-      dashboard?.resumeAnalyzed
-    );
+    Boolean(dashboard?.resumeAnalyzed);
 
   const atsScore =
     dashboard?.atsScore ?? 0;
@@ -265,15 +302,13 @@ function DashboardHome() {
   const selectedApplications =
     applications.filter(
       (application) =>
-        application.status ===
-        "Selected"
+        application.status === "Selected"
     ).length;
 
   const interviewApplications =
     applications.filter(
       (application) =>
-        application.status ===
-        "Interview"
+        application.status === "Interview"
     ).length;
 
   return (

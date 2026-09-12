@@ -1,6 +1,5 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
 const User = require("../models/User");
 const { sendEmail } = require("../utils/emailService");
 
@@ -53,8 +52,7 @@ const register = async (req, res) => {
     // EMAIL VALIDATION
     // ==========================================
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({
@@ -70,8 +68,7 @@ const register = async (req, res) => {
     if (String(password).length < 6) {
       return res.status(400).json({
         success: false,
-        message:
-          "Password must be at least 6 characters long",
+        message: "Password must be at least 6 characters long",
       });
     }
 
@@ -103,8 +100,7 @@ const register = async (req, res) => {
     if (existingEmail) {
       return res.status(409).json({
         success: false,
-        message:
-          "An account with this email already exists",
+        message: "An account with this email already exists",
       });
     }
 
@@ -119,8 +115,7 @@ const register = async (req, res) => {
     if (existingStudent) {
       return res.status(409).json({
         success: false,
-        message:
-          "An account with this Student ID already exists",
+        message: "An account with this Student ID already exists",
       });
     }
 
@@ -128,8 +123,7 @@ const register = async (req, res) => {
     // HASH PASSWORD
     // ==========================================
 
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // ==========================================
     // CREATE USER
@@ -137,34 +131,23 @@ const register = async (req, res) => {
 
     const user = await User.create({
       name: String(name).trim(),
-
       email: normalizedEmail,
-
       password: hashedPassword,
-
       studentId: normalizedStudentId,
-
       college: String(college).trim(),
-
       branch: String(branch).trim(),
-
       semester: semesterNumber,
-
       role: "student",
     });
 
     // ==========================================
     // SEND WELCOME EMAIL
+    // FIRE AND FORGET
     // ==========================================
-    // IMPORTANT:
-    // `to` is the NEW student's email.
-    // It is NOT EMAIL_USER.
 
-    const emailResult = await sendEmail({
+    sendEmail({
       to: normalizedEmail,
-
-      subject:
-        "Welcome to Placement AI Tracker 🎓",
+      subject: "Welcome to Placement AI Tracker 🎓",
 
       text: `
 Hello ${user.name},
@@ -200,10 +183,10 @@ Placement AI Tracker Team
           </p>
 
           <div style="
-              background: #f3f4f6;
-              padding: 18px;
-              border-radius: 10px;
-              margin: 20px 0;
+            background: #f3f4f6;
+            padding: 18px;
+            border-radius: 10px;
+            margin: 20px 0;
           ">
 
             <p>
@@ -240,35 +223,34 @@ Placement AI Tracker Team
 
         </div>
       `,
-    });
+    })
+      .then((emailResult) => {
+        if (emailResult?.success) {
+          console.log(
+            `Welcome email sent to ${normalizedEmail}`
+          );
+        } else {
+          console.error(
+            "Welcome email failed:",
+            emailResult?.message
+          );
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "Welcome email error:",
+          error.message
+        );
+      });
 
     // ==========================================
-    // EMAIL RESULT
-    // ==========================================
-
-    if (emailResult?.success) {
-      console.log(
-        `Welcome email sent to ${normalizedEmail}`
-      );
-    } else {
-      console.error(
-        "Welcome email failed:",
-        emailResult?.message
-      );
-    }
-
-    // ==========================================
-    // RESPONSE
+    // IMMEDIATE RESPONSE
     // ==========================================
 
     return res.status(201).json({
       success: true,
-
-      message:
-        "Registration successful",
-
-      emailSent:
-        emailResult?.success === true,
+      message: "Registration successful",
+      emailSent: false,
 
       user: {
         id: user._id,
@@ -281,6 +263,7 @@ Placement AI Tracker Team
         role: user.role,
       },
     });
+
   } catch (error) {
     console.error(
       "Registration Error:",
@@ -306,8 +289,7 @@ const login = async (req, res) => {
     if (!studentId || !password) {
       return res.status(400).json({
         success: false,
-        message:
-          "Student ID and password are required",
+        message: "Student ID and password are required",
       });
     }
 
@@ -326,11 +308,10 @@ const login = async (req, res) => {
       });
     }
 
-    const passwordMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    const passwordMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!passwordMatch) {
       return res.status(401).json({
@@ -359,9 +340,7 @@ const login = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-
       message: "Login successful",
-
       token,
 
       user: {
@@ -375,6 +354,7 @@ const login = async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (error) {
     console.error(
       "Login Error:",
@@ -387,6 +367,10 @@ const login = async (req, res) => {
     });
   }
 };
+
+// =====================================================
+// EXPORTS
+// =====================================================
 
 module.exports = {
   register,
