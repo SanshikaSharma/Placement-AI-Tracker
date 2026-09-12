@@ -1,24 +1,25 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
 
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
 
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  // Force IPv4.
+  // Render environment was trying to connect through IPv6.
+  family: 4,
+
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
 });
 
-const sendEmail = async ({
-  to,
-  subject,
-  text,
-  html,
-}) => {
+const sendEmail = async ({ to, subject, text, html }) => {
   try {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error("Email configuration is missing");
@@ -29,6 +30,15 @@ const sendEmail = async ({
       };
     }
 
+    if (!to) {
+      console.error("Email recipient is missing");
+
+      return {
+        success: false,
+        message: "Email recipient is missing",
+      };
+    }
+
     const mailOptions = {
       from: `"Placement AI Tracker" <${process.env.EMAIL_USER}>`,
       to,
@@ -36,6 +46,8 @@ const sendEmail = async ({
       text,
       html,
     };
+
+    console.log(`Sending email to: ${to}`);
 
     const info = await transporter.sendMail(mailOptions);
 
