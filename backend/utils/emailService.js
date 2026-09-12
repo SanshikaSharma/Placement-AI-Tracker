@@ -1,28 +1,7 @@
-const nodemailer = require("nodemailer");
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-
-  // Force IPv4.
-  // Render environment was trying to connect through IPv6.
-  family: 4,
-
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
-});
-
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.error("Email configuration is missing");
+    if (!process.env.RESEND_API_KEY) {
+      console.error("RESEND_API_KEY is missing");
 
       return {
         success: false,
@@ -31,40 +10,55 @@ const sendEmail = async ({ to, subject, text, html }) => {
     }
 
     if (!to) {
-      console.error("Email recipient is missing");
+      console.error("Recipient email is missing");
 
       return {
         success: false,
-        message: "Email recipient is missing",
+        message: "Recipient email is required",
       };
     }
 
-    const mailOptions = {
-      from: `"Placement AI Tracker" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      text,
-      html,
-    };
-
     console.log(`Sending email to: ${to}`);
 
-    const info = await transporter.sendMail(mailOptions);
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from:
+          process.env.EMAIL_FROM ||
+          "Placement AI Tracker <onboarding@resend.dev>",
+        to: [to],
+        subject,
+        text,
+        html,
+      }),
+    });
 
-    console.log(
-      "Email Sent Successfully:",
-      info.messageId
-    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Resend Email Error:", data);
+
+      return {
+        success: false,
+        message:
+          data?.message ||
+          data?.error ||
+          "Failed to send email",
+      };
+    }
+
+    console.log("Email Sent Successfully:", data.id);
 
     return {
       success: true,
-      messageId: info.messageId,
+      messageId: data.id,
     };
   } catch (error) {
-    console.error(
-      "Email Sending Error:",
-      error.message
-    );
+    console.error("Email Sending Error:", error.message);
 
     return {
       success: false,
