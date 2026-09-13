@@ -88,6 +88,7 @@ function DashboardHome() {
       /*
        * Dashboard
        */
+
       const dashboardResult = results[0];
 
       if (
@@ -105,6 +106,7 @@ function DashboardHome() {
       /*
        * Applications
        */
+
       const applicationResult = results[1];
 
       if (applicationResult.status === "fulfilled") {
@@ -125,6 +127,7 @@ function DashboardHome() {
       /*
        * Notifications
        */
+
       const notificationResult = results[2];
 
       if (notificationResult.status === "fulfilled") {
@@ -144,6 +147,7 @@ function DashboardHome() {
       /*
        * Career Analytics
        */
+
       const analyticsResult = results[3];
 
       if (analyticsResult.status === "fulfilled") {
@@ -174,21 +178,25 @@ function DashboardHome() {
   /*
    * Initial dashboard load
    */
-  useEffect(() => {
-  const timer = setTimeout(() => {
-    loadDashboard(true);
-  }, 0);
 
-  return () => {
-    clearTimeout(timer);
-  };
-}, [loadDashboard]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadDashboard(true);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [loadDashboard]);
 
   /*
    * Automatically refresh dashboard when:
+   *
    * - user returns to the tab
    * - browser restores the page
+   * - another part of the application changes data
    */
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -197,6 +205,10 @@ function DashboardHome() {
     };
 
     const handlePageShow = () => {
+      loadDashboard(false);
+    };
+
+    const handleDataUpdated = () => {
       loadDashboard(false);
     };
 
@@ -210,6 +222,11 @@ function DashboardHome() {
       handlePageShow
     );
 
+    window.addEventListener(
+      "placement-data-updated",
+      handleDataUpdated
+    );
+
     return () => {
       document.removeEventListener(
         "visibilitychange",
@@ -219,6 +236,11 @@ function DashboardHome() {
       window.removeEventListener(
         "pageshow",
         handlePageShow
+      );
+
+      window.removeEventListener(
+        "placement-data-updated",
+        handleDataUpdated
       );
     };
   }, [loadDashboard]);

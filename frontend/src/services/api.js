@@ -9,6 +9,9 @@ const api = axios.create({
   },
 });
 
+/*
+  Get the latest authentication token before every request.
+*/
 api.interceptors.request.use(
   (config) => {
     const token =
@@ -20,6 +23,35 @@ api.interceptors.request.use(
     }
 
     return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+/*
+  Notify the React app whenever a successful data-changing
+  API request is completed.
+
+  GET requests are intentionally ignored because they only
+  read data.
+*/
+api.interceptors.response.use(
+  (response) => {
+    const method = response.config?.method?.toLowerCase();
+
+    const dataChangingMethods = ["post", "put", "patch", "delete"];
+
+    if (dataChangingMethods.includes(method)) {
+      window.dispatchEvent(
+        new CustomEvent("placement-data-updated", {
+          detail: {
+            method,
+            url: response.config?.url || "",
+          },
+        })
+      );
+    }
+
+    return response;
   },
   (error) => Promise.reject(error)
 );

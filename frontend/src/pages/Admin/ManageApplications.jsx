@@ -13,9 +13,11 @@ function ManageApplications() {
   // ==========================
   // LOAD APPLICATIONS
   // ==========================
-  const loadApplications = async () => {
+  const loadApplications = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
 
       const res = await getAllApplications();
 
@@ -30,12 +32,31 @@ function ManageApplications() {
     }
   };
 
+  // ==========================
+  // INITIAL LOAD + AUTO REFRESH
+  // ==========================
   useEffect(() => {
-    const fetchData = async () => {
-      await loadApplications();
+    const timer = setTimeout(() => {
+      loadApplications(true);
+    }, 0);
+
+    const handleDataUpdated = () => {
+      loadApplications(false);
     };
 
-    fetchData();
+    window.addEventListener(
+      "placement-data-updated",
+      handleDataUpdated
+    );
+
+    return () => {
+      clearTimeout(timer);
+
+      window.removeEventListener(
+        "placement-data-updated",
+        handleDataUpdated
+      );
+    };
   }, []);
 
   // ==========================
@@ -45,8 +66,11 @@ function ManageApplications() {
     const searchText = search.toLowerCase();
 
     return applications.filter((app) => {
-      const student = app.student?.name?.toLowerCase() || "";
-      const company = app.company?.companyName?.toLowerCase() || "";
+      const student =
+        app.student?.name?.toLowerCase() || "";
+
+      const company =
+        app.company?.companyName?.toLowerCase() || "";
 
       return (
         student.includes(searchText) ||
@@ -60,11 +84,12 @@ function ManageApplications() {
   // ==========================
   const handleStatusChange = async (id, status) => {
     try {
-      const res = await updateApplicationStatus(id, status);
+      const res =
+        await updateApplicationStatus(id, status);
 
       alert(res.message);
 
-      await loadApplications();
+      await loadApplications(false);
     } catch (error) {
       console.error(error);
       alert("Unable to update status");
@@ -82,17 +107,21 @@ function ManageApplications() {
     if (!confirmDelete) return;
 
     try {
-      const res = await deleteApplication(id);
+      const res =
+        await deleteApplication(id);
 
       alert(res.message);
 
-      await loadApplications();
+      await loadApplications(false);
     } catch (error) {
       console.error(error);
       alert("Unable to delete application");
     }
   };
 
+  // ==========================
+  // LOADING
+  // ==========================
   if (loading) {
     return (
       <div className="p-10 text-2xl font-semibold">
@@ -101,6 +130,9 @@ function ManageApplications() {
     );
   }
 
+  // ==========================
+  // PAGE
+  // ==========================
   return (
     <div className="p-8">
       <h1 className="text-4xl font-bold mb-8">
@@ -111,7 +143,9 @@ function ManageApplications() {
         type="text"
         placeholder="Search Student or Company..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) =>
+          setSearch(e.target.value)
+        }
         className="border rounded-lg px-4 py-3 w-full mb-8"
       />
 
@@ -119,11 +153,25 @@ function ManageApplications() {
         <table className="w-full">
           <thead className="bg-gray-100">
             <tr>
-              <th className="p-4 text-left">Student</th>
-              <th className="p-4 text-left">Company</th>
-              <th className="p-4 text-left">Role</th>
-              <th className="p-4 text-left">Status</th>
-              <th className="p-4 text-center">Actions</th>
+              <th className="p-4 text-left">
+                Student
+              </th>
+
+              <th className="p-4 text-left">
+                Company
+              </th>
+
+              <th className="p-4 text-left">
+                Role
+              </th>
+
+              <th className="p-4 text-left">
+                Status
+              </th>
+
+              <th className="p-4 text-center">
+                Actions
+              </th>
             </tr>
           </thead>
 
@@ -138,64 +186,69 @@ function ManageApplications() {
                 </td>
               </tr>
             ) : (
-              filteredApplications.map((app) => (
-                <tr
-                  key={app._id}
-                  className="border-b"
-                >
-                  <td className="p-4">
-                    {app.student?.name || "-"}
-                  </td>
+              filteredApplications.map(
+                (app) => (
+                  <tr
+                    key={app._id}
+                    className="border-b"
+                  >
+                    <td className="p-4">
+                      {app.student?.name || "-"}
+                    </td>
 
-                  <td className="p-4">
-                    {app.company?.companyName || "-"}
-                  </td>
+                    <td className="p-4">
+                      {app.company?.companyName ||
+                        "-"}
+                    </td>
 
-                  <td className="p-4">
-                    {app.company?.role || "-"}
-                  </td>
+                    <td className="p-4">
+                      {app.company?.role || "-"}
+                    </td>
 
-                  <td className="p-4">
-                    <select
-                      value={app.status}
-                      onChange={(e) =>
-                        handleStatusChange(
-                          app._id,
-                          e.target.value
-                        )
-                      }
-                      className="border rounded px-3 py-2"
-                    >
-                      <option value="Applied">
-                        Applied
-                      </option>
+                    <td className="p-4">
+                      <select
+                        value={app.status}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            app._id,
+                            e.target.value
+                          )
+                        }
+                        className="border rounded px-3 py-2"
+                      >
+                        <option value="Applied">
+                          Applied
+                        </option>
 
-                      <option value="Shortlisted">
-                        Shortlisted
-                      </option>
+                        <option value="Shortlisted">
+                          Shortlisted
+                        </option>
 
-                      <option value="Selected">
-                        Selected
-                      </option>
+                        <option value="Selected">
+                          Selected
+                        </option>
 
-                      <option value="Rejected">
-                        Rejected
-                      </option>
-                    </select>
-                  </td>
+                        <option value="Rejected">
+                          Rejected
+                        </option>
+                      </select>
+                    </td>
 
-                  <td className="p-4 text-center">
-                    <button
-                      onClick={() =>
-                        handleDelete(app._id)
-                      }
-                      className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() =>
+                          handleDelete(
+                            app._id
+                          )
+                        }
+                        className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
+              )
             )}
           </tbody>
         </table>

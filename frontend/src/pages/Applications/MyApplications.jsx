@@ -14,10 +14,15 @@ function MyApplications() {
   // FETCH LOGGED-IN STUDENT APPLICATIONS
   // =============================
   useEffect(() => {
-    const fetchApplications = async () => {
+    const fetchApplications = async (showLoader = true) => {
       try {
+        if (showLoader) {
+          setLoading(true);
+        }
+
         const storedUser =
-          sessionStorage.getItem("user");
+          sessionStorage.getItem("user") ||
+          localStorage.getItem("user");
 
         if (!storedUser) {
           alert("Please login first");
@@ -28,7 +33,9 @@ function MyApplications() {
         const user = JSON.parse(storedUser);
 
         const studentId =
-          user?._id || user?.id;
+          user?._id ||
+          user?.id ||
+          user?.userId;
 
         if (!studentId) {
           alert(
@@ -68,7 +75,26 @@ function MyApplications() {
       }
     };
 
-    fetchApplications();
+    // Initial load
+    fetchApplications(true);
+
+    // Automatically refresh when another part
+    // of the application changes placement data.
+    const handleDataUpdated = () => {
+      fetchApplications(false);
+    };
+
+    window.addEventListener(
+      "placement-data-updated",
+      handleDataUpdated
+    );
+
+    return () => {
+      window.removeEventListener(
+        "placement-data-updated",
+        handleDataUpdated
+      );
+    };
   }, []);
 
   // =============================
@@ -86,6 +112,7 @@ function MyApplications() {
     try {
       await withdrawApplication(id);
 
+      // Update current page immediately
       setApplications((prev) =>
         prev.filter(
           (app) => app._id !== id
