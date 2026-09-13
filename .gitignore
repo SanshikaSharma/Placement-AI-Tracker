@@ -25,3 +25,5 @@ uploads/
 
 # Backup archives
 *.zip
+# Google OAuth credentials
+backend/google-credentials.json
